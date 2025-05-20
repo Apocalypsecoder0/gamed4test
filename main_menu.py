@@ -220,8 +220,6 @@ class CombatSystemGUI:
             # Remove type restriction: ensure skill dict can accept int for 'power' and 'mana_cost'
             # If skill dict is type-restricted, use a new dict for combat logic
             skill = dict(skill)
-            skill['power'] = 15
-            skill['mana_cost'] = 10
             self.combat.use_skill(skill)
         else:
             self.combat.log.append("No skills available!")
@@ -270,7 +268,7 @@ class SocialSystem:
     def leave_party(self, player_name):
         if self.party and player_name in self.party['members']:
             self.party['members'].remove(player_name)
-        if self.party['leader'] == player_name:
+        if self.party and self.party['leader'] == player_name:
             self.party = None  # Dissolve party if leader leaves
 
     def get_party_members(self):
@@ -713,14 +711,17 @@ class MainMenuGUI:
 
     def continue_game(self):
         # Continue logic for resuming last character and campaign
-        if not hasattr(self, 'character') or not self.character:
+        if not hasattr(self, 'character') or self.character is None:
             messagebox.showinfo("Continue", "No saved character found. Please start a new game.")
+            return
+        if not isinstance(self.character, dict):
+            messagebox.showerror("Continue", "Character data is invalid.")
             return
         # Show full stats and launch gameplay
         stats = self.character.get('stats', {}) if isinstance(self.character, dict) else {}
         stats_str = '\n'.join([f"{k}: {v}" for k, v in stats.items()]) if isinstance(stats, dict) and bool(stats) else 'No stats.'
         info = (
-            f"Continuing your adventure as {self.character['name']} the {self.character['class']}!\n"
+            f"Continuing your adventure as {self.character.get('name', 'Unknown')} the {self.character.get('class', 'Unknown')}!\n"
             f"Mode: {'Hardcore' if self.character.get('hardcore') else 'Normal'}\n"
             f"Level: {self.character.get('level', 1)}\nXP: {self.character.get('xp', 0)}\n"
             f"Stats:\n{stats_str}\n"
@@ -1035,10 +1036,14 @@ class MainMenuGUI:
         # Example: show up to 4 skills/spells from character
         skills = char.get('skills', [])
         if not skills:
-            # Fallback to class skills
-            skills = DIABLO4_SKILLS.get(char.get('class', 'Barbarian'), [])
+            # Fallback: use default skills for class if available
+            if 'class' in char and char['class'] in DIABLO4_SKILLS:
+                skills = DIABLO4_SKILLS[char['class']]
+            else:
+                skills = []
         for i, skill in enumerate(skills[:4]):
-            tk.Button(actions_frame, text=skill['name'], width=18, command=lambda s=skill: messagebox.showinfo("Skill Used", f"You used {s['name']}!\n{s['desc']}"), bg="#222", fg="#fff").grid(row=0, column=i, padx=3, pady=2)
+            skill_name = skill['name'] if isinstance(skill, dict) and 'name' in skill else str(skill)
+            tk.Button(actions_frame, text=skill_name, width=18, command=lambda s=skill: messagebox.showinfo("Skill", f"You use {s['name']}!" if isinstance(s, dict) and 'name' in s else f"You use {s}"), bg="#222", fg="#fff").grid(row=0, column=i, padx=3, pady=2)
         # Basic Attack
         tk.Button(actions_frame, text="Basic Attack", width=18, command=lambda: messagebox.showinfo("Attack", "You attack the enemy!"), bg="#444", fg="#fff").grid(row=1, column=0, padx=3, pady=2)
         # Close button
@@ -1061,66 +1066,62 @@ class MainMenuGUI:
         recipe_var.set(recipes[0] if recipes else "")
         tk.OptionMenu(crafting, recipe_var, *recipes).pack(pady=5)
         def do_craft():
-            item = cs.craft(recipe_var.get())
+            recipe = recipe_var.get()
+            if not recipe:
+                messagebox.showerror("Crafting", "No recipe selected.")
+                return
+            if not cs.can_craft(recipe):
+                messagebox.showerror("Crafting", "Not enough materials to craft this item.")
+                return
+            item = cs.craft(recipe)
             if item:
-                messagebox.showinfo("Crafted!", f"You crafted: {item['name']}\nAffixes: {item['prefix']}, {item['suffix']}")
-
+                messagebox.showinfo("Crafting", f"Crafted: {item['name']}\nPrefix: {item['prefix']}\nSuffix: {item['suffix']}")
                 mats_label.config(text='\n'.join([f"{k}: {v}" for k, v in cs.get_materials().items()]))
             else:
-                messagebox.showerror("Crafting Failed", "Not enough materials or invalid recipe.")
-        tk.Button(crafting, text="Craft", command=do_craft).pack(pady=10)
-        tk.Button(crafting, text="Close", command=crafting.destroy).pack(pady=10)
+                messagebox.showerror("Crafting", "Crafting failed.")
+        tk.Button(crafting, text="Craft Item", command=do_craft).pack(pady=8)
+        tk.Button(crafting, text="Close", command=crafting.destroy).pack(pady=8)
 
     def show_season_window(self):
         win = tk.Toplevel(self.root)
-        win.title("Season Mode - Arcane Engine")
-        tk.Label(win, text="Current Season:", font=('Arial', 12, 'bold')).pack(pady=5)
-        season = self.season_manager.get_current_season()
-        tk.Label(win, text=f"Season {season['number']}: {season['name']} ({season['start']} to {season['end']})", font=('Arial', 11)).pack()
-        tk.Label(win, text="Features:", font=('Arial', 10, 'bold')).pack(pady=2)
-        for feat in season['features']:
-            tk.Label(win, text=f"- {feat}", anchor='w', justify='left').pack(fill='x', padx=20)
-        tk.Label(win, text="\nSwitch Season:", font=('Arial', 10, 'bold')).pack(pady=5)
-        for s in self.season_manager.list_seasons():
-            btn = tk.Button(win, text=f"Season {s['number']}: {s['name']}", command=lambda n=s['number']: self._set_season_and_refresh(win, n))
-            btn.pack(fill='x', padx=10, pady=1)
+        win.title("Season Mode")
+        tk.Label(win, text="Season Mode", font=("Arial", 14, "bold")).pack(pady=8)
+        tk.Label(win, text=f"Current Season: {self.season_manager.get_current_season()}").pack(pady=4)
+        for i in range(1, 5):
+            tk.Button(win, text=f"Set Season {i}", command=lambda n=i: self._set_season_and_refresh(win, n)).pack(pady=2)
         tk.Button(win, text="Close", command=win.destroy).pack(pady=8)
 
     def _set_season_and_refresh(self, win, number):
         self.season_manager.set_season(number)
+        messagebox.showinfo("Season Mode", f"Season set to {number}!")
         win.destroy()
         self.show_season_window()
 
     def show_nightmare_window(self):
         win = tk.Toplevel(self.root)
         win.title("Nightmare Dungeons")
-        tk.Label(win, text="Select a Nightmare Dungeon:", font=('Arial', 12, 'bold')).pack(pady=5)
-        for idx, dungeon in enumerate(self.nightmare_manager.list_dungeons()):
-            btn = tk.Button(win, text=f"{dungeon.name} - {dungeon.get_difficulty()}", command=lambda i=idx: self._run_nightmare_dungeon(win, i))
-            btn.pack(fill='x', padx=10, pady=1)
+        tk.Label(win, text="Nightmare Dungeons", font=("Arial", 14, "bold")).pack(pady=8)
+        dungeons = self.nightmare_manager.list_dungeons()
+        for idx, dungeon in enumerate(dungeons):
+            tk.Button(win, text=f"{dungeon['name']} (Tier {dungeon['tier']})", command=lambda i=idx: self._run_nightmare_dungeon(win, i)).pack(pady=2)
         tk.Button(win, text="Close", command=win.destroy).pack(pady=8)
 
     def _run_nightmare_dungeon(self, win, idx):
-        dungeon = self.nightmare_manager.get_dungeon(idx)
-        if dungeon:
-            dungeon.complete()
-            rewards = dungeon.get_rewards()
-            messagebox.showinfo("Dungeon Complete", f"You completed {dungeon.name}!\nRewards: Gold {rewards['gold']}, XP {rewards['xp']}, Glyphs {rewards['glyphs']}")
+        dungeons = self.nightmare_manager.get_nightmare_dungeons()
+        if 0 <= idx < len(dungeons):
+            dungeon = dungeons[idx]
+            result = self.nightmare_manager.run_dungeon(dungeon)
+            messagebox.showinfo("Nightmare Dungeon", result)
+        else:
+            messagebox.showerror("Nightmare Dungeon", "Invalid dungeon selection.")
         win.destroy()
-        self.show_nightmare_window()
 
     def show_pit_window(self):
         win = tk.Toplevel(self.root)
         win.title("Pit of Artificers")
-        pit = PitOfArtificers(tier=10)  # Example tier
-        tk.Label(win, text=pit.get_challenge(), font=('Arial', 12, 'bold')).pack(pady=5)
-        def complete_pit():
-            pit.complete()
-            rewards = pit.get_rewards()
-            messagebox.showinfo("Pit Complete", f"You completed the Pit!\nRewards: Gold {rewards['gold']}, XP {rewards['xp']}, Masterwork Materials {rewards['masterwork_materials']}")
-            win.destroy()
-        tk.Button(win, text="Complete Challenge", command=complete_pit).pack(pady=8)
-        tk.Button(win, text="Close", command=win.destroy).pack(pady=3)
+        tk.Label(win, text="Pit of Artificers", font=("Arial", 14, "bold")).pack(pady=8)
+        tk.Label(win, text="(Feature coming soon!)").pack(pady=8)
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=8)
 
     def launch_character_select(self):
         char_list = self.load_character_list()
@@ -1231,7 +1232,7 @@ class MainMenuGUI:
         def do_teleport():
             player = name_entry.get().strip() or "You"
             loc = loc_var.get()
-            if callable(getattr(self.teleport_system, 'teleport', None)):
+            if self.teleport_system is not None and callable(getattr(self.teleport_system, 'teleport', None)):
                 result = self.teleport_system.teleport(player, loc)
                 messagebox.showinfo("Teleport", result)
             else:
@@ -1358,6 +1359,7 @@ class SkillTree:
                 node.unlocked = True
                 self.points -= node.required_points
                 return True
+
         return False
     def __repr__(self):
         return f"SkillTree: {[n.name for n in self.nodes if n.unlocked]}"
@@ -1677,8 +1679,9 @@ class SeasonManager:
         return self.seasons
 class NightmareDungeonManager:
     class Dungeon:
-        def __init__(self, name):
+        def __init__(self, name, tier=1):
             self.name = name
+            self.tier = tier
         def get_difficulty(self):
             return 'Nightmare'
         def complete(self):
@@ -1686,11 +1689,19 @@ class NightmareDungeonManager:
         def get_rewards(self):
             return {'gold': 100, 'xp': 500, 'glyphs': 1}
     def __init__(self):
-        self.dungeons = [self.Dungeon('Shadow Crypt'), self.Dungeon('Frost Cavern')]
+        self.dungeons = [self.Dungeon('Shadow Crypt', 1), self.Dungeon('Frost Cavern', 2)]
     def list_dungeons(self):
-        return self.dungeons
+        # Return a list of dicts with name and tier for GUI display
+        return [{'name': d.name, 'tier': d.tier} for d in self.dungeons]
     def get_dungeon(self, idx):
         return self.dungeons[idx] if 0 <= idx < len(self.dungeons) else None
+    def get_nightmare_dungeons(self):
+        # Return the actual Dungeon objects
+        return self.dungeons
+    def run_dungeon(self, dungeon):
+        # Simulate running a dungeon and returning a result string
+        rewards = dungeon.get_rewards()
+        return f"Completed {dungeon.name}! Rewards: Gold {rewards['gold']}, XP {rewards['xp']}, Glyphs {rewards['glyphs']}"
 class PitOfArtificers:
     def __init__(self, tier=1):
         self.tier = tier
