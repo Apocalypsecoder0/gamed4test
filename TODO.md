@@ -11,10 +11,12 @@
 
 ## World & Map
 
-- Add tooltips, zoom, and region highlights to the world map
-- Implement dynamic world events (raids, invasions, seasonal changes)
-- Add more towns, cities, dungeons, and points of interest
-- Enable persistent world state (save/restore world changes)
+- Add interactive tooltips to the world map (show region/town info on hover)
+- Implement zoom in/out functionality for the world map (mouse wheel or buttons)
+- Add region highlights (visual feedback when hovering or selecting regions)
+- Implement dynamic world events (raids, invasions, seasonal changes, world bosses)
+- Add more towns, cities, dungeons, lairs, and points of interest to the open world
+- Enable persistent world state (save and restore player location, discovered areas, completed events, and world changes)
 
 ## User Interface & Experience
 

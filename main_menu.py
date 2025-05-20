@@ -1,11 +1,12 @@
-import tkinter as tk
-from tkinter import messagebox
 import random
 import time
-import pickle
-import importlib.util
-import sys
 import os
+import pickle
+import sys
+import importlib.util
+import tkinter as tk
+from tkinter import messagebox
+from tkinter import simpledialog
 
 # Import referenced subsystems (if available)
 try:
@@ -85,6 +86,461 @@ class CraftingSystem:
     def get_recipes(self):
         return [r['name'] for r in self.crafting_recipes]
 
+class CombatSystem:
+    def __init__(self, player, enemy):
+        self.player = player
+        self.enemy = enemy
+        self.turn = 'player'  # or 'enemy'
+        self.log = []
+        self.player_hp = player.get('stats', {}).get('hp', 100)
+        self.enemy_hp = enemy.get('hp', 50)
+        self.player_max_hp = player.get('stats', {}).get('max_hp', 100)
+        self.enemy_max_hp = enemy.get('hp', 50)
+        self.player_mana = player.get('stats', {}).get('mana', 50)
+        self.player_max_mana = player.get('stats', {}).get('max_mana', 50)
+        self.status = {'player': [], 'enemy': []}
+        self.result = None
+
+    def player_attack(self):
+        base = self.player.get('stats', {}).get('attack', 10)
+        speed = self.player.get('stats', {}).get('attack_speed', 1.0)
+        crit = self.player.get('stats', {}).get('crit_chance', 0.05)
+        crit_mult = self.player.get('stats', {}).get('crit_mult', 2.0)
+        dmg = DPSCalculator.calculate(base, speed, crit, crit_mult)
+        dmg = int(dmg * random.uniform(0.8, 1.2))
+        self.enemy_hp -= dmg
+        self.log.append(f"Player attacks for {dmg} damage!")
+        if self.enemy_hp <= 0:
+            self.enemy_hp = 0
+            self.result = 'win'
+            self.log.append("Enemy defeated!")
+        self.turn = 'enemy'
+
+    def enemy_attack(self):
+        base = self.enemy.get('attack', 8)
+        speed = self.enemy.get('attack_speed', 1.0)
+        crit = self.enemy.get('crit_chance', 0.05)
+        crit_mult = self.enemy.get('crit_mult', 1.5)
+        dmg = DPSCalculator.calculate(base, speed, crit, crit_mult)
+        dmg = int(dmg * random.uniform(0.8, 1.2))
+        self.player_hp -= dmg
+        self.log.append(f"Enemy attacks for {dmg} damage!")
+        if self.player_hp <= 0:
+            self.player_hp = 0
+            self.result = 'lose'
+            self.log.append("You have been defeated!")
+        self.turn = 'player'
+
+    def use_skill(self, skill):
+        # Example: skills cost mana, deal extra damage
+        cost = skill.get('mana_cost', 10)
+        if self.player_mana < cost:
+            self.log.append("Not enough mana!")
+            return
+        self.player_mana -= cost
+        base = self.player.get('stats', {}).get('attack', 10) + skill.get('power', 10)
+        dmg = int(base * random.uniform(1.1, 1.5))
+        self.enemy_hp -= dmg
+        self.log.append(f"Player uses {skill['name']} for {dmg} damage!")
+        if self.enemy_hp <= 0:
+            self.enemy_hp = 0
+            self.result = 'win'
+            self.log.append("Enemy defeated!")
+        self.turn = 'enemy'
+
+    def is_over(self):
+        return self.result is not None
+
+    def get_log(self):
+        return '\n'.join(self.log[-6:])
+
+class CombatSystemGUI:
+    def __init__(self, root, player, enemy):
+        self.root = tk.Toplevel(root)
+        self.root.title("Combat Encounter")
+        self.combat = CombatSystem(player, enemy)
+        self._draw_ui()
+        self._update_ui()
+
+    def _draw_ui(self):
+        self.info = tk.Label(self.root, text="", font=("Arial", 12, "bold"))
+        self.info.pack(pady=5)
+        self.player_bar = tk.Label(self.root, text="", fg="#0a0")
+        self.player_bar.pack()
+        self.enemy_bar = tk.Label(self.root, text="", fg="#a00")
+        self.enemy_bar.pack()
+        self.log = tk.Label(self.root, text="", justify='left', anchor='w')
+        self.log.pack(pady=5)
+        self.btn_frame = tk.Frame(self.root)
+        self.btn_frame.pack(pady=5)
+        self.attack_btn = tk.Button(self.btn_frame, text="Attack", width=14, command=self._attack)
+        self.attack_btn.grid(row=0, column=0, padx=2)
+        self.skill_btn = tk.Button(self.btn_frame, text="Use Skill", width=14, command=self._use_skill)
+        self.skill_btn.grid(row=0, column=1, padx=2)
+        self.end_btn = tk.Button(self.btn_frame, text="End Turn", width=14, command=self._end_turn)
+        self.end_btn.grid(row=0, column=2, padx=2)
+        self.close_btn = tk.Button(self.root, text="Close", command=self.root.destroy)
+        self.close_btn.pack(pady=5)
+
+    def _update_ui(self):
+        c = self.combat
+        self.info.config(text=f"Player HP: {c.player_hp}/{c.player_max_hp} | Mana: {c.player_mana}/{c.player_max_mana}\nEnemy HP: {c.enemy_hp}/{c.enemy_max_hp}")
+        self.player_bar.config(text=f"Player: {c.player['name']} ({c.player.get('class', 'Hero')})")
+        self.enemy_bar.config(text=f"Enemy: {c.enemy['name']} (Lv{c.enemy.get('level', 1)})")
+        self.log.config(text=c.get_log())
+        if c.is_over():
+            self.attack_btn.config(state='disabled')
+            self.skill_btn.config(state='disabled')
+            self.end_btn.config(state='disabled')
+            if c.result == 'win':
+                self.info.config(text="Victory! You defeated the enemy.")
+            else:
+                self.info.config(text="Defeat! You have fallen.")
+        elif c.turn == 'player':
+            self.attack_btn.config(state='normal')
+            self.skill_btn.config(state='normal')
+            self.end_btn.config(state='normal')
+        else:
+            self.attack_btn.config(state='disabled')
+            self.skill_btn.config(state='disabled')
+            self.end_btn.config(state='disabled')
+            self.root.after(1200, self._enemy_turn)
+
+    def _attack(self):
+        self.combat.player_attack()
+        self._update_ui()
+
+    def _use_skill(self):
+        # Use first available skill for demo
+        skills = self.combat.player.get('skills', [])
+        if not skills:
+            skills = DIABLO4_SKILLS.get(self.combat.player.get('class', 'Barbarian'), [])
+        if skills:
+            skill = skills[0].copy()
+            # Remove type restriction: ensure skill dict can accept int for 'power' and 'mana_cost'
+            # If skill dict is type-restricted, use a new dict for combat logic
+            skill = dict(skill)
+            skill['power'] = 15
+            skill['mana_cost'] = 10
+            self.combat.use_skill(skill)
+        else:
+            self.combat.log.append("No skills available!")
+        self._update_ui()
+
+    def _end_turn(self):
+        self.combat.turn = 'enemy'
+        self._update_ui()
+
+    def _enemy_turn(self):
+        if not self.combat.is_over():
+            self.combat.enemy_attack()
+            self._update_ui()
+
+class SocialSystem:
+    def __init__(self):
+        self.friends = []
+        self.blocked = []
+        self.party = None
+
+    def add_friend(self, player_name):
+        if player_name not in self.friends:
+            self.friends.append(player_name)
+
+    def remove_friend(self, player_name):
+        if player_name in self.friends:
+            self.friends.remove(player_name)
+
+    def block_player(self, player_name):
+        if player_name not in self.blocked:
+            self.blocked.append(player_name)
+        if player_name in self.friends:
+            self.friends.remove(player_name)  # Unfriend if blocked
+
+    def unblock_player(self, player_name):
+        if player_name in self.blocked:
+            self.blocked.remove(player_name)
+
+    def create_party(self, leader):
+        self.party = {'leader': leader, 'members': [leader]}
+
+    def join_party(self, player_name):
+        if self.party and player_name not in self.party['members']:
+            self.party['members'].append(player_name)
+
+    def leave_party(self, player_name):
+        if self.party and player_name in self.party['members']:
+            self.party['members'].remove(player_name)
+        if self.party['leader'] == player_name:
+            self.party = None  # Dissolve party if leader leaves
+
+    def get_party_members(self):
+        return self.party['members'] if self.party else []
+
+    def is_blocked(self, player_name):
+        return player_name in self.blocked
+
+    def is_friend(self, player_name):
+        return player_name in self.friends
+
+class PartySystem:
+    def __init__(self):
+        self.parties = {}  # Active parties {party_id: party_data}
+        self.next_party_id = 1
+
+    def create_party(self, leader):
+        party_id = self.next_party_id
+        self.parties[party_id] = {'id': party_id, 'leader': leader, 'members': [leader]}
+        self.next_party_id += 1
+        return party_id
+
+    def join_party(self, party_id, player_name):
+        if party_id in self.parties:
+            party = self.parties[party_id]
+            if player_name not in party['members']:
+                party['members'].append(player_name)
+                return True
+        return False
+
+    def leave_party(self, party_id, player_name):
+        if party_id in self.parties:
+            party = self.parties[party_id]
+            if player_name in party['members']:
+                party['members'].remove(player_name)
+                if party['leader'] == player_name:
+                    self.dissolve_party(party_id)  # Dissolve if leader leaves
+                return True
+        return False
+
+    def dissolve_party(self, party_id):
+        if party_id in self.parties:
+            del self.parties[party_id]
+
+    def get_party(self, party_id):
+        return self.parties.get(party_id, None)
+
+    def is_in_party(self, player_name):
+        for party in self.parties.values():
+            if player_name in party['members']:
+                return party
+        return None
+
+class SocialSystemGUI:
+    def __init__(self, root, social_system):
+        self.root = tk.Toplevel(root)
+        self.root.title("Social System")
+        self.social_system = social_system
+        self._draw_ui()
+
+    def _draw_ui(self):
+        tk.Label(self.root, text="Friends:", font=("Arial", 12, "bold")).pack(pady=5)
+        self.friends_list = tk.Listbox(self.root)
+        self.friends_list.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
+        tk.Button(self.root, text="Add Friend", command=self._add_friend).pack(pady=5)
+        tk.Button(self.root, text="Remove Friend", command=self._remove_friend).pack(pady=5)
+        tk.Button(self.root, text="Block Player", command=self._block_player).pack(pady=5)
+        tk.Button(self.root, text="Unblock Player", command=self._unblock_player).pack(pady=5)
+        tk.Button(self.root, text="Close", command=self.root.destroy).pack(pady=5)
+        self._update_friends_list()
+
+    def _update_friends_list(self):
+        self.friends_list.delete(0, tk.END)
+        for friend in self.social_system.friends:
+            self.friends_list.insert(tk.END, friend)
+
+    def _add_friend(self):
+        name = self._prompt_player_name("Add Friend")
+        if name:
+            self.social_system.add_friend(name)
+            self._update_friends_list()
+
+    def _remove_friend(self):
+        selected = self.friends_list.curselection()
+        if selected:
+            friend = self.friends_list.get(selected)
+            self.social_system.remove_friend(friend)
+            self._update_friends_list()
+
+    def _block_player(self):
+        name = self._prompt_player_name("Block Player")
+        if name:
+            self.social_system.block_player(name)
+
+    def _unblock_player(self):
+        name = self._prompt_player_name("Unblock Player")
+        if name:
+            self.social_system.unblock_player(name)
+
+    def _prompt_player_name(self, action):
+        name = simpledialog.askstring("Player Name", f"Enter the name of the player to {action.lower()}:")
+        return name.strip() if name else None
+
+class RaidSystem:
+    def __init__(self):
+        self.raids = [
+            {'name': 'Sanctum of Shadows', 'level': 30, 'boss': 'Shadow Lord', 'min_party': 4, 'max_party': 8},
+            {'name': 'Citadel of Storms', 'level': 45, 'boss': 'Tempest Queen', 'min_party': 6, 'max_party': 12},
+            {'name': 'Infernal Depths', 'level': 60, 'boss': 'Hellfire Behemoth', 'min_party': 8, 'max_party': 16},
+        ]
+        self.active_raid = None
+    def list_raids(self):
+        return self.raids
+    def start_raid(self, raid_name, party):
+        raid = next((r for r in self.raids if r['name'] == raid_name), None)
+        if raid and len(party) >= raid['min_party']:
+            self.active_raid = {'raid': raid, 'party': party, 'progress': 0}
+            return True
+        return False
+    def complete_raid(self):
+        if self.active_raid:
+            raid = self.active_raid['raid']
+            self.active_raid = None
+            return f"Raid '{raid['name']}' completed! Boss '{raid['boss']}' defeated!"
+        return "No active raid."
+
+class TrialSystem:
+    def __init__(self):
+        self.trials = [
+            {'name': 'Trial of Valor', 'level': 10, 'type': 'Solo'},
+            {'name': 'Trial of Endurance', 'level': 20, 'type': 'Party'},
+            {'name': 'Trial of Elements', 'level': 35, 'type': 'Solo'},
+            {'name': 'Trial of Champions', 'level': 50, 'type': 'Party'},
+        ]
+        self.active_trial = None
+    def list_trials(self):
+        return self.trials
+    def start_trial(self, trial_name, party):
+        trial = next((t for t in self.trials if t['name'] == trial_name), None)
+        if trial and (trial['type'] == 'Solo' or (party and len(party) > 1)):
+            self.active_trial = {'trial': trial, 'party': party, 'progress': 0}
+            return True
+        return False
+    def complete_trial(self):
+        if self.active_trial:
+            trial = self.active_trial['trial']
+            self.active_trial = None
+            return f"Trial '{trial['name']}' completed!"
+        return "No active trial."
+
+class DungeonSystem:
+    def __init__(self):
+        self.dungeons = [
+            {'name': 'Crypt of the Fallen', 'level': 5, 'boss': 'Bone Warden'},
+            {'name': 'Spider Lair', 'level': 12, 'boss': 'Broodmother'},
+            {'name': 'Sunken Catacombs', 'level': 20, 'boss': 'Drowned King'},
+            {'name': 'Frost Cavern', 'level': 28, 'boss': 'Ice Revenant'},
+            {'name': 'Obsidian Halls', 'level': 35, 'boss': 'Obsidian Golem'},
+            {'name': 'Temple of Light', 'level': 42, 'boss': 'Radiant Seraph'},
+            {'name': 'Infernal Depths', 'level': 60, 'boss': 'Hellfire Behemoth'},
+        ]
+        self.active_dungeon = None
+    def list_dungeons(self):
+        return self.dungeons
+    def start_dungeon(self, dungeon_name, party):
+        dungeon = next((d for d in self.dungeons if d['name'] == dungeon_name), None)
+        if dungeon:
+            self.active_dungeon = {'dungeon': dungeon, 'party': party, 'progress': 0}
+            return True
+        return False
+    def complete_dungeon(self):
+        if self.active_dungeon:
+            dungeon = self.active_dungeon['dungeon']
+            self.active_dungeon = None
+            return f"Dungeon '{dungeon['name']}' completed! Boss '{dungeon['boss']}' defeated!"
+        return "No active dungeon."
+
+class PartyFinderSystem:
+    def __init__(self, party_system, dungeon_system):
+        self.party_system = party_system
+        self.dungeon_system = dungeon_system
+        self.lfg_queue = []  # List of {'player': name, 'dungeon': dungeon_name}
+    def join_lfg(self, player_name, dungeon_name):
+        self.lfg_queue.append({'player': player_name, 'dungeon': dungeon_name})
+    def find_party(self, dungeon_name):
+        # Group players queued for the same dungeon into parties of 4
+        queued = [q['player'] for q in self.lfg_queue if q['dungeon'] == dungeon_name]
+        parties = [queued[i:i+4] for i in range(0, len(queued), 4)]
+        formed = []
+        for party in parties:
+            if len(party) == 4:
+                party_id = self.party_system.create_party(party[0])
+                for member in party[1:]:
+                    self.party_system.join_party(party_id, member)
+                formed.append({'party_id': party_id, 'members': party})
+                # Remove from queue
+                self.lfg_queue = [q for q in self.lfg_queue if q['player'] not in party]
+        return formed
+
+# Place new system class definitions BEFORE MainMenuGUI
+class InstanceBaseSystem:
+    """
+    ARPG Instance Base System: Handles instanced dungeons, raids, and world events for parties.
+    """
+    def __init__(self):
+        self.instances = []  # List of {'type': 'dungeon'|'raid'|'event', 'name': str, 'party': list, 'instance_id': int}
+        self.next_instance_id = 1
+    def create_instance(self, instance_type, name, party):
+        instance = {
+            'type': instance_type,
+            'name': name,
+            'party': party,
+            'instance_id': self.next_instance_id
+        }
+        self.instances.append(instance)
+        self.next_instance_id += 1
+        return instance['instance_id']
+    def get_instance(self, instance_id):
+        for inst in self.instances:
+            if inst['instance_id'] == instance_id:
+                return inst
+        return None
+    def close_instance(self, instance_id):
+        self.instances = [inst for inst in self.instances if inst['instance_id'] != instance_id]
+    def list_instances(self):
+        return self.instances.copy()
+
+class DungeonFinderSystem:
+    """
+    Dungeon Finder: Queue for dungeons, auto-match parties, and teleport to instance.
+    """
+    def __init__(self, party_system, dungeon_system, instance_base_system):
+        self.party_system = party_system
+        self.dungeon_system = dungeon_system
+        self.instance_base_system = instance_base_system
+        self.lfd_queue = []  # [{'player': name, 'dungeon': dungeon_name}]
+    def join_lfd(self, player_name, dungeon_name):
+        self.lfd_queue.append({'player': player_name, 'dungeon': dungeon_name})
+    def match_parties(self, dungeon_name):
+        queued = [q['player'] for q in self.lfd_queue if q['dungeon'] == dungeon_name]
+        parties = [queued[i:i+4] for i in range(0, len(queued), 4)]
+        formed = []
+        for party in parties:
+            if len(party) == 4:
+                party_id = self.party_system.create_party(party[0])
+                for member in party[1:]:
+                    self.party_system.join_party(party_id, member)
+                instance_id = self.instance_base_system.create_instance('dungeon', dungeon_name, party)
+                formed.append({'party_id': party_id, 'members': party, 'instance_id': instance_id})
+                self.lfd_queue = [q for q in self.lfd_queue if q['player'] not in party]
+        return formed
+
+class TeleportSystem:
+    """
+    Teleport System: Allows teleporting to towns, dungeons, or party/instance locations.
+    """
+    def __init__(self, world_map):
+        self.world_map = world_map  # Dict of (x, y): location dict
+    def get_teleport_locations(self):
+        # Return all towns, cities, dungeons, and instance entrances
+        locs = []
+        for loc in self.world_map.values():
+            if loc['type'] in ['Town', 'City', 'Kingdom', 'Dungeon']:
+                locs.append(loc)
+        return locs
+    def teleport(self, player, location_name):
+        # For demo: just return the location name as the new zone
+        return f"Teleported {player} to {location_name}!"
+
+# === MAIN MENU GUI ===
 class MainMenuGUI:
     def __init__(self):
         self.root = tk.Tk()
@@ -92,6 +548,15 @@ class MainMenuGUI:
         self.character = None  # Store the current character
         self.season_manager = SeasonManager()
         self.nightmare_manager = NightmareDungeonManager()
+        self.social_system = SocialSystem()
+        self.party_system = PartySystem()
+        self.raid_system = RaidSystem()
+        self.trial_system = TrialSystem()
+        self.dungeon_system = DungeonSystem()
+        self.instance_base_system = InstanceBaseSystem()
+        self.party_finder = PartyFinderSystem(self.party_system, self.dungeon_system)
+        self.dungeon_finder = DungeonFinderSystem(self.party_system, self.dungeon_system, self.instance_base_system)
+        self.teleport_system = None  # Will be set after world creation
         self.show_loading_screen()
         self.create_menu()
 
@@ -136,6 +601,12 @@ class MainMenuGUI:
         tk.Button(frame, text="Pit of Artificers", command=self.show_pit_window).pack(pady=3)
         tk.Button(frame, text="Nightmare Dungeons", command=self.show_nightmare_window).pack(pady=3)
         tk.Button(frame, text="Character Select", command=self.launch_character_select).pack(pady=3)
+        tk.Button(frame, text="Raids", width=30, command=self.launch_raids).pack(pady=3)
+        tk.Button(frame, text="Trials", width=30, command=self.launch_trials).pack(pady=3)
+        tk.Button(frame, text="Dungeons", width=30, command=self.launch_dungeons).pack(pady=3)
+        tk.Button(frame, text="Party Finder", width=30, command=self.launch_party_finder).pack(pady=3)
+        tk.Button(frame, text="Dungeon Finder", width=30, command=self.launch_dungeon_finder).pack(pady=3)
+        tk.Button(frame, text="Teleport", width=30, command=self.launch_teleport).pack(pady=3)
 
     def new_game(self):
         # Initialize/reset game stats for a new game
@@ -364,6 +835,7 @@ class MainMenuGUI:
             'towns': [t['name'] for t in towns],
             'zones': [z['name'] for z in zones],
         }
+        self.teleport_system = TeleportSystem(self.world_map)
 
     def load_game(self):
         from tkinter import filedialog
@@ -662,6 +1134,111 @@ class MainMenuGUI:
         # Optionally save the last selected character index
         messagebox.showinfo("Character Selected", f"You selected: {character['name']}")
 
+    def launch_raids(self):
+        win = tk.Toplevel(self.root)
+        win.title("Raids")
+        raids = self.raid_system.list_raids()
+        tk.Label(win, text="Available Raids:", font=("Arial", 12, "bold")).pack(pady=5)
+        for raid in raids:
+            tk.Label(win, text=f"{raid['name']} (Lv{raid['level']}) - Boss: {raid['boss']} | Party: {raid['min_party']}-{raid['max_party']}").pack(anchor='w')
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=5)
+
+    def launch_trials(self):
+        win = tk.Toplevel(self.root)
+        win.title("Trials")
+        trials = self.trial_system.list_trials()
+        tk.Label(win, text="Available Trials:", font=("Arial", 12, "bold")).pack(pady=5)
+        for trial in trials:
+            tk.Label(win, text=f"{trial['name']} (Lv{trial['level']}) - {trial['type']}").pack(anchor='w')
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=5)
+
+    def launch_dungeons(self):
+        win = tk.Toplevel(self.root)
+        win.title("Dungeons")
+        dungeons = self.dungeon_system.list_dungeons()
+        tk.Label(win, text="Available Dungeons:", font=("Arial", 12, "bold")).pack(pady=5)
+        for dungeon in dungeons:
+            tk.Label(win, text=f"{dungeon['name']} (Lv{dungeon['level']}) - Boss: {dungeon['boss']}").pack(anchor='w')
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=5)
+
+    def launch_party_finder(self):
+        win = tk.Toplevel(self.root)
+        win.title("Party Finder (LFG)")
+        tk.Label(win, text="Join Party Finder for a Dungeon:", font=("Arial", 12, "bold")).pack(pady=5)
+        dungeons = self.dungeon_system.list_dungeons()
+        dungeon_var = tk.StringVar(win)
+        dungeon_var.set(dungeons[0]['name'] if dungeons else "")
+        tk.OptionMenu(win, dungeon_var, *[d['name'] for d in dungeons]).pack(pady=5)
+        name_entry = tk.Entry(win)
+        name_entry.pack(pady=5)
+        def join_lfg():
+            player_name = name_entry.get().strip() or "You"
+            dungeon_name = dungeon_var.get()
+            self.party_finder.join_lfg(player_name, dungeon_name)
+            messagebox.showinfo("LFG", f"{player_name} joined LFG for {dungeon_name}!")
+        tk.Button(win, text="Join LFG", command=join_lfg).pack(pady=5)
+        def form_parties():
+            dungeon_name = dungeon_var.get()
+            formed = self.party_finder.find_party(dungeon_name)
+            if formed:
+                msg = "\n".join([f"Party formed: {', '.join(p['members'])}" for p in formed])
+                messagebox.showinfo("Party Formed", msg)
+            else:
+                messagebox.showinfo("Party Formed", "Not enough players to form a party yet.")
+        tk.Button(win, text="Form Parties", command=form_parties).pack(pady=5)
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=5)
+
+    def launch_dungeon_finder(self):
+        win = tk.Toplevel(self.root)
+        win.title("Dungeon Finder (LFD)")
+        tk.Label(win, text="Queue for a Dungeon:", font=("Arial", 12, "bold")).pack(pady=5)
+        dungeons = self.dungeon_system.list_dungeons()
+        dungeon_var = tk.StringVar(win)
+        dungeon_var.set(dungeons[0]['name'] if dungeons else "")
+        tk.OptionMenu(win, dungeon_var, *[d['name'] for d in dungeons]).pack(pady=5)
+        name_entry = tk.Entry(win)
+        name_entry.pack(pady=5)
+        def join_lfd():
+            player_name = name_entry.get().strip() or "You"
+            dungeon_name = dungeon_var.get()
+            self.dungeon_finder.join_lfd(player_name, dungeon_name)
+            messagebox.showinfo("LFD", f"{player_name} joined Dungeon Finder for {dungeon_name}!")
+        tk.Button(win, text="Join Dungeon Finder", command=join_lfd).pack(pady=5)
+        def match_parties():
+            dungeon_name = dungeon_var.get()
+            formed = self.dungeon_finder.match_parties(dungeon_name)
+            if formed:
+                msg = "\n".join([f"Party formed: {', '.join(p['members'])} (Instance {p['instance_id']})" for p in formed])
+                messagebox.showinfo("Dungeon Instance Created", msg)
+            else:
+                messagebox.showinfo("Dungeon Instance", "Not enough players to form a party yet.")
+        tk.Button(win, text="Form Parties & Create Instance", command=match_parties).pack(pady=5)
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=5)
+
+    def launch_teleport(self):
+        if not self.teleport_system or not callable(getattr(self.teleport_system, 'teleport', None)):
+            messagebox.showerror("Teleport", "World not initialized yet.")
+            return
+        win = tk.Toplevel(self.root)
+        win.title("Teleport")
+        tk.Label(win, text="Teleport to:", font=("Arial", 12, "bold")).pack(pady=5)
+        locs = self.teleport_system.get_teleport_locations()
+        loc_var = tk.StringVar(win)
+        loc_var.set(locs[0]['name'] if locs else "")
+        tk.OptionMenu(win, loc_var, *[l['name'] for l in locs]).pack(pady=5)
+        name_entry = tk.Entry(win)
+        name_entry.pack(pady=5)
+        def do_teleport():
+            player = name_entry.get().strip() or "You"
+            loc = loc_var.get()
+            if callable(getattr(self.teleport_system, 'teleport', None)):
+                result = self.teleport_system.teleport(player, loc)
+                messagebox.showinfo("Teleport", result)
+            else:
+                messagebox.showerror("Teleport", "Teleport system not available.")
+        tk.Button(win, text="Teleport", command=do_teleport).pack(pady=5)
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=5)
+
 # Character selection GUI
 class CharacterSelectGUI:
     def __init__(self, root, character_list, on_select):
@@ -768,9 +1345,6 @@ class SkillNode:
         self.name = name
         self.description = description
         self.required_points = required_points
-        self.unlocked = unlocked
-    def __repr__(self):
-        return f"SkillNode({self.name}, Unlocked: {self.unlocked})"
 
 class SkillTree:
     def __init__(self):
@@ -848,7 +1422,7 @@ class DPSCalculator:
         dps = ((base_damage + flat_bonus) * (1 + percent_bonus)) * attack_speed * crit
         return dps
 
-# === SKILLS AND PASSIVES DATA (Diablo 4 & Last Epoch inspired) ===
+# === SKILLS AND PASSIVES DATA (Diablo  4 & Last Epoch inspired) ===
 
 # Example skills for each class (expand as needed)
 DIABLO4_SKILLS = {
@@ -1042,6 +1616,7 @@ class EnemyAI:
 # === LOOT RARITIES, CLASSES, TYPES (define before use) ===
 LOOT_RARITIES = [
     {'name': 'Common', 'color': '#bbb', 'weight': 60},
+   
     {'name': 'Magic', 'color': '#4b8cff', 'weight': 25},
     {'name': 'Rare', 'color': '#ffe14b', 'weight': 10},
     {'name': 'Legendary', 'color': '#ff7f27', 'weight': 4},
@@ -1086,384 +1661,47 @@ GEAR_SUFFIXES = [
     {'name': 'of the Titan', 'effect': '+Max Health'},
 ]
 
-# Minimal LOOT_TABLE to avoid NameError in crafting/loot logic
-LOOT_TABLE = [
-    {'item': 'Iron Sword', 'type': 'Weapon'},
-    {'item': 'Ancient Staff', 'type': 'Weapon'},
-    {'item': 'Leather Armor', 'type': 'Armor'},
-    {'item': 'Ring of Power', 'type': 'Ring'},
-]
-
-# Example stat and substat pools for affix rolling
-STAT_AFFIXES = [
-    {'name': 'Damage', 'min': 5, 'max': 50},
-    {'name': 'Attack Speed', 'min': 1, 'max': 10},
-    {'name': 'Critical Strike Chance', 'min': 1, 'max': 15},
-    {'name': 'Life Leech', 'min': 1, 'max': 8},
-    {'name': 'Armor Penetration', 'min': 2, 'max': 20},
-    {'name': 'Elemental Damage', 'min': 3, 'max': 25},
-    {'name': 'Block Chance', 'min': 1, 'max': 10},
-    {'name': 'All Resistances', 'min': 2, 'max': 12},
-    {'name': 'Max Health', 'min': 10, 'max': 100},
-    {'name': 'Mana Regen', 'min': 1, 'max': 8},
-]
-
-SUBSTAT_AFFIXES = [
-    {'name': 'Stun Duration', 'min': 1, 'max': 5},
-    {'name': 'Bleed Chance', 'min': 1, 'max': 10},
-    {'name': 'Poison Chance', 'min': 1, 'max': 10},
-    {'name': 'Freeze Chance', 'min': 1, 'max': 10},
-    {'name': 'Movement Speed', 'min': 1, 'max': 7},
-    {'name': 'Gold Find', 'min': 2, 'max': 15},
-    {'name': 'XP Gain', 'min': 1, 'max': 10},
-]
-
-# Advanced affix roll function for stats and substats
-
-def roll_affixes(num_stats=2, num_substats=1):
-    import random
-    stats = random.sample(STAT_AFFIXES, k=num_stats)
-    substats = random.sample(SUBSTAT_AFFIXES, k=num_substats)
-    rolled_stats = {s['name']: random.randint(s['min'], s['max']) for s in stats}
-    rolled_substats = {s['name']: random.randint(s['min'], s['max']) for s in substats}
-    return rolled_stats, rolled_substats
-
-# Update loot generation to include stat and substat rolls
-
-def generate_loot(player_class=None):
-    import random
-    # Filter loot table by class if provided
-    filtered_loot = [entry for entry in LOOT_TABLE if not player_class or player_class in entry['class']]
-    if not filtered_loot:
-        return None
-    items, weights = zip(*[(entry, entry['chance']) for entry in filtered_loot])
-    chosen = random.choices(items, weights=weights, k=1)[0]
-    # Determine rarity (weighted)
-    rarities, rarity_weights = zip(*[(r['name'], r['weight']) for r in LOOT_RARITIES])
-    rarity = random.choices(rarities, weights=rarity_weights, k=1)[0]
-    # Add prefix and suffix
-    prefix = random.choice(GEAR_PREFIXES)
-    suffix = random.choice(GEAR_SUFFIXES)
-    # Roll stats and substats
-    stats, substats = roll_affixes(num_stats=2, num_substats=1)
-    loot = {
-        'name': f"{prefix['name']} {chosen['item']} {suffix['name']}",
-        'type': chosen['type'],
-        'rarity': rarity,
-        'class': chosen['class'],
-        'prefix': prefix['effect'],
-        'suffix': suffix['effect'],
-        'color': next((r['color'] for r in LOOT_RARITIES if r['name'] == rarity), '#fff'),
-        'stats': stats,
-        'substats': substats
-    }
-    return loot
-
-# === MAP TOOLTIP, ZOOM, REGION HIGHLIGHT, DYNAMIC EVENTS (STUBS) ===
-class WorldMapGUI:
-    def __init__(self, root, world_data):
-        self.root = root
-        self.world_data = world_data
-        self.canvas = tk.Canvas(root, width=900, height=600, bg='black')
-        self.canvas.pack()
-        self.zoom_level = 1.0
-        self.region_highlight = None
-        self.tooltip = None
-        self.dynamic_events = []
-        self._draw_map()
-        self.canvas.bind('<Motion>', self._on_mouse_move)
-        self.canvas.bind('<MouseWheel>', self._on_zoom)
-        self._spawn_dynamic_events()
-    def _draw_map(self):
-        # ...draw map, highlights, and events...
-        pass
-    def _on_mouse_move(self, event):
-        # ...show tooltip and highlight region...
-        pass
-    def _on_zoom(self, event):
-        # ...zoom in/out...
-        pass
-    def _spawn_dynamic_events(self):
-        # ...add random events...
-        pass
-
-# === INVENTORY DRAG-AND-DROP, ITEM TOOLTIPS (STUBS) ===
-class InventoryGUI:
-    def __init__(self, root, inventory):
-        self.root = root
-        self.inventory = inventory
-        self.frame = tk.Frame(root)
-        self.frame.pack()
-        self._draw_inventory()
-    def _draw_inventory(self):
-        # ...draw inventory grid, add drag-and-drop and tooltips...
-        pass
-
-# === IN-GAME HELP/TUTORIAL (STUB) ===
-def show_help_window(root):
-    help_win = tk.Toplevel(root)
-    help_win.title("Arcane Engine Help & Tutorial")
-    tk.Label(help_win, text="Help and tutorial coming soon.", font=('Arial', 11)).pack(padx=10, pady=10)
-    tk.Button(help_win, text="Close", command=help_win.destroy).pack(pady=5)
-
-# === SEASON MODE SYSTEM (Diablo 4 Inspired, Seasons 1-7) ===
+# Dummy/fallback definitions for missing constants and classes to prevent NameError
+GEAR_PREFIXES = [{'name': 'Mighty', 'effect': '+5 Strength'}, {'name': 'Arcane', 'effect': '+5 Intelligence'}]
+GEAR_SUFFIXES = [{'name': 'of Power', 'effect': '+10 Damage'}, {'name': 'of the Bear', 'effect': '+10 Vitality'}]
+LOOT_TABLE = [{'item': 'Iron Sword', 'type': 'Weapon'}, {'item': 'Ancient Staff', 'type': 'Weapon'}, {'item': 'Leather Armor', 'type': 'Armor'}, {'item': 'Ring of Power', 'type': 'Accessory'}]
 class SeasonManager:
-    SEASONS = [
-        {
-            'number': 1,
-            'name': 'Season of the Malignant',
-            'start': '2023-07-20',
-            'end': '2023-10-17',
-            'features': [
-                'Malignant Hearts system',
-                'New questline',
-                'Seasonal journey',
-                'Battle Pass',
-                'Unique Malignant enemies',
-                'Seasonal powers',
-            ]
-        },
-        {
-            'number': 2,
-            'name': 'Season of Blood',
-            'start': '2023-10-17',
-            'end': '2024-01-23',
-            'features': [
-                'Vampiric Powers system',
-                'Blood Harvest events',
-                'New questline',
-                'Seasonal journey',
-                'Battle Pass',
-                'Vampire Hunter NPC',
-            ]
-        },
-        {
-            'number': 3,
-            'name': 'Season of the Construct',
-            'start': '2024-01-23',
-            'end': '2024-04-16',
-            'features': [
-                'Seneschal Companion system',
-                'Vaults and Arcane Constructs',
-                'New questline',
-                'Seasonal journey',
-                'Battle Pass',
-                'Construct enemies',
-            ]
-        },
-        {
-            'number': 4,
-            'name': 'Season of Loot Reborn',
-            'start': '2024-04-16',
-            'end': '2024-08-06',
-            'features': [
-                'Loot overhaul',
-                'Greater Affixes',
-                'Tempering and Masterworking',
-                'Seasonal journey',
-                'Battle Pass',
-                'Uber Unique target farming',
-            ]
-        },
-        {
-            'number': 5,
-            'name': 'Season of the Infernal Hordes',
-            'start': '2024-08-06',
-            'end': '2024-10-29',
-            'features': [
-                'Infernal Hordes endgame mode',
-                'Infernal Compass',
-                'New questline',
-                'Seasonal journey',
-                'Battle Pass',
-                'New legendary aspects',
-            ]
-        },
-        {
-            'number': 6,
-            'name': 'Season of the Iron Wolves',
-            'start': '2024-10-29',
-            'end': '2025-02-18',
-            'features': [
-                'Mercenary system',
-                'Iron Wolves Faction',
-                'New questline',
-                'Seasonal journey',
-                'Battle Pass',
-                'Faction events',
-            ]
-        },
-        {
-            'number': 7,
-            'name': 'Season of the Spirits',
-            'start': '2025-02-18',
-            'end': '2025-05-20',
-            'features': [
-                'Spirit Boons system',
-                'Spirit Realms events',
-                'New questline',
-                'Seasonal journey',
-                'Battle Pass',
-                'Spirit-themed cosmetics',
-            ]
-        },
-    ]
     def __init__(self):
-        self.current_season = self.SEASONS[-1]
+        self.seasons = [{'number': 1, 'name': 'Season of Shadows', 'start': '2025-01-01', 'end': '2025-03-31', 'features': ['New Quests', 'Unique Items']}]
+        self.current = 0
     def get_current_season(self):
-        return self.current_season
+        return self.seasons[self.current]
+    def set_season(self, n):
+        self.current = max(0, min(n-1, len(self.seasons)-1))
     def list_seasons(self):
-        return self.SEASONS
-    def set_season(self, number):
-        for season in self.SEASONS:
-            if season['number'] == number:
-                self.current_season = season
-                return True
-        return False
-
-# === NIGHTMARE DUNGEONS SYSTEM (Diablo 4 Inspired) ===
-class NightmareDungeon:
-    def __init__(self, name, tier, affixes, rewards):
-        self.name = name
-        self.tier = tier  # Difficulty tier
-        self.affixes = affixes  # List of dungeon modifiers
-        self.rewards = rewards  # List of possible rewards
-        self.completed = False
-    def complete(self):
-        self.completed = True
-    def get_difficulty(self):
-        return f"Tier {self.tier}"
-    def __repr__(self):
-        return f"Nightmare Dungeon: {self.name} (Tier {self.tier}, Affixes: {self.affixes}, Rewards: {self.rewards})"
-
+        return self.seasons
 class NightmareDungeonManager:
-    DUNGEONS = [
-        NightmareDungeon('Forgotten Depths', 1, ['Poison Pools', 'Enraged Beasts'], ['Legendary Item', 'Glyph XP']),
-        NightmareDungeon('Shadowed Catacombs', 2, ['Darkness', 'Cursed Shrines'], ['Unique Item', 'Glyph XP']),
-        NightmareDungeon('Frostworn Cavern', 3, ['Frozen Ground', 'Elite Packs'], ['Legendary Item', 'Glyph XP']),
-        # ...add more dungeons...
-    ]
+    class Dungeon:
+        def __init__(self, name):
+            self.name = name
+        def get_difficulty(self):
+            return 'Nightmare'
+        def complete(self):
+            pass
+        def get_rewards(self):
+            return {'gold': 100, 'xp': 500, 'glyphs': 1}
     def __init__(self):
-        self.active_dungeon = None
+        self.dungeons = [self.Dungeon('Shadow Crypt'), self.Dungeon('Frost Cavern')]
     def list_dungeons(self):
-        return self.DUNGEONS
-    def start_dungeon(self, name):
-        for d in self.DUNGEONS:
-            if d.name == name:
-                self.active_dungeon = d
-                return d
-        return None
-    def complete_active(self):
-        if self.active_dungeon:
-            self.active_dungeon.complete()
-            return self.active_dungeon.rewards
-        return []
+        return self.dungeons
     def get_dungeon(self, idx):
-        if 0 <= idx < len(self.DUNGEONS):
-
-            return self.DUNGEONS[idx]
-        return None
-
-# === PIT OF ARTIFICERS FEATURE ===
+        return self.dungeons[idx] if 0 <= idx < len(self.dungeons) else None
 class PitOfArtificers:
     def __init__(self, tier=1):
         self.tier = tier
-        self.challenges = [
-            'Timed Monster Waves',
-            'Elite Gauntlet',
-            'Trap Rooms',
-            'Boss Rush'
-        ]
-        self.rewards = [
-            'Masterworking Materials',
-            'Legendary Items',
-            'Unique Items',
-            'Glyph XP'
-        ]
-        self.completed = False
-    def attempt(self, challenge):
-        # Simulate challenge attempt
-        import random
-        success = random.choice([True, False])
-        if success:
-            self.completed = True
-            return random.sample(self.rewards, k=2)
-        return []
     def get_challenge(self):
-        # Return a random or current challenge
-        import random
-        return random.choice(self.challenges)
-    def get_rewards(self):
-        # Return a dict for UI compatibility
-        return {'gold': 500 * self.tier, 'xp': 1000 * self.tier, 'masterwork_materials': 3 * self.tier}
+        return f"Pit of Artificers Tier {self.tier}: Defeat the Artificer!"
     def complete(self):
-        self.completed = True
-        return self.get_rewards()
-    def __repr__(self):
-        return f"Pit of Artificers (Tier {self.tier}, Challenges: {self.challenges}, Rewards: {self.rewards})"
-
-# === GLYPHS SYSTEM (Diablo 4 Paragon) ===
-class Glyph:
-    def __init__(self, name, effect, level=1, max_level=21):
-        self.name = name
-        self.effect = effect
-        self.level = level
-        self.max_level = max_level
-    def upgrade(self):
-        if self.level < self.max_level:
-            self.level += 1
-    def __repr__(self):
-        return f"Glyph: {self.name} (Level {self.level}/{self.max_level}) - {self.effect}"
-
-class GlyphManager:
-    GLYPHS = [
-        Glyph('Exploit', 'Increase damage to Vulnerable enemies.'),
-        Glyph('Territorial', 'Increase damage to Close enemies.'),
-        Glyph('Control', 'Increase damage to Crowd Controlled enemies.'),
-        Glyph('Destruction', 'Increase Critical Strike Damage.'),
-        Glyph('Spirit', 'Increase Willpower and skill effect.'),
-        # ...add more glyphs...
-    ]
-    def __init__(self):
-        self.collected = []
-    def collect(self, glyph_name):
-
-        for g in self.GLYPHS:
-            if g.name == glyph_name and g not in self.collected:
-                self.collected.append(g)
-                return g
-        return None
-    def upgrade_glyph(self, glyph_name):
-        for g in self.collected:
-            if g.name == glyph_name:
-                g.upgrade()
-                return g
-        return None
-    def list_collected(self):
-        return self.collected
-
-# === UNIQUES SYSTEM ===
-UNIQUES = [
-    {'name': 'The Grandfather', 'type': 'Sword', 'effect': '+Damage, +Max Life, +All Stats'},
-    {'name': 'Harlequin Crest', 'type': 'Helmet', 'effect': '+All Stats, +Cooldown Reduction, +Damage Reduction'},
-    {'name': 'Doombringer', 'type': 'Sword', 'effect': '+Shadow Damage, +Lucky Hit, +Max Life'},
-    # ...add more uniques...
-]
-
-# === WORLD BOSSES AND LAIR BOSSES ===
-WORLD_BOSSES = [
-    {'name': 'Ashava the Pestilent', 'level': 50, 'location': 'The Crucible', 'rewards': ['Legendary', 'Unique', 'Cosmetic']},
-    {'name': 'Avarice, the Gold Cursed', 'level': 50, 'location': 'Seared Basin', 'rewards': ['Legendary', 'Gold', 'Cosmetic']},
-    {'name': 'Wandering Death', 'level': 50, 'location': 'Saraan Caldera', 'rewards': ['Legendary', 'Unique', 'Cosmetic']},
-    # ...add more world bosses...
-]
-
-LAIR_BOSSES = [
-    {'name': 'Echo of Lilith', 'level': 100, 'location': 'Throne of Hatred', 'rewards': ['Uber Unique', 'Cosmetic']},
-    {'name': 'Grigoire, The Galvanic Saint', 'level': 80, 'location': 'Hall of the Penitent', 'rewards': ['Legendary', 'Glyph XP']},
-    {'name': 'Varshan the Consumed', 'level': 60, 'location': 'Malignant Burrow', 'rewards': ['Unique', 'Legendary']},
-    # ...add more lair bosses...
-]
+        pass
+    def get_rewards(self):
+        return {'gold': 200, 'xp': 1000, 'masterwork_materials': 3}
+def show_help_window(root):
+    messagebox.showinfo("Help / Tutorial", "Welcome to Arcane Engine! Use the menu to explore features.")
 
 if __name__ == "__main__":
     gui = MainMenuGUI()
