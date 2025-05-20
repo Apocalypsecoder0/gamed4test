@@ -1,16 +1,19 @@
 # Diablo 4: Eternal Quest - Game Design Document
 
 ## 1. Game Overview
+
 A modular, extensible RPG system inspired by Diablo 4, Diablo 3, and Last Epoch. Features include:
+
 - Character creation, classes, races, professions, jobs
 - Inventory, loot, equipment, set items, Kanai's Cube
 - Skills, passives, paragon, and DPS calculations
 - Open world zones, dungeons, raids, trials, rifts
 - Social, party, trial, and raid group systems
 - World difficulty, seasons, eternal realm, battle pass, auction house, factions
-- Nemesis system, codex, crafting, masterwork, tempering
+- Nemesis system, codex, crafting, masterwork, tempering.
 
 ## 2. Core Systems
+
 - **Character System**: Level 1-100, paragon, professions, jobs, skill/passive trees
 - **Inventory & Loot**: Grid-based, rarity, set items, Kanai's Cube, auction house
 - **Combat**: DPS calculation, world difficulty, nemesis, party/raid mechanics
@@ -19,22 +22,28 @@ A modular, extensible RPG system inspired by Diablo 4, Diablo 3, and Last Epoch.
 - **Social**: Friends, clans, factions, auction house
 
 ## 3. UI/UX
+
 - Tkinter-based GUI for all major systems
 - Main menu with loading screen, credits, and system access
 
 ## 4. Update & Patch System
+
 - Versioning and patch notes
 - Patch log for debugging
 - Update notification in main menu
 
 ## 5. Debugging & Logging
+
 - Log file for errors, warnings, and info
 - Patch/update notes appended to log
+- Debug sources: All major systems log errors and important events to `debug.log` for troubleshooting. Patch notes and update notifications are also recorded for traceability.
 
 ## 6. UML
+
 - See `uml_diagram.png` (to be created)
 
 ## 7. Notes
+
 - All content is fan-made and non-commercial.
 - Modular code for easy extension.
 
@@ -58,9 +67,15 @@ A modular, extensible RPG system inspired by Diablo 4, Diablo 3, and Last Epoch.
 - **Vendors/NPCs**: Towns and cities feature various vendors:
   - Blacksmith: Repairs and upgrades weapons/armor.
   - Jeweler: Socketing and upgrading gems.
-  - Alchemist: Sells potions, crafting mats, and upgrades flasks.
+  - Alchemist: Sells potions, crafting materials, and upgrades flasks.
   - Purveyor of Curiosities: Gambles for random items using Obols.
   - General Goods: Sells basic supplies.
   - Quest Givers: Provide main/side quests and bounties.
   - Bank NPC: Manages player bank access and upgrades.
-- **Tree of Whispers**: Endgame system where players complete world objectives (Whispers) to earn Grim Favors. Turning in Grim Favors at the Tree of Whispers grants powerful rewards, crafting mats, and legendary/unique items. The Tree is a central hub for endgame progression and bounties.
+- **Tree of Whispers**: Endgame system where players complete world objectives (Whispers) to earn Grim Favors. Turning in Grim Favors at the Tree of Whispers grants powerful rewards, crafting materials, and legendary/unique items. The Tree is a central hub for endgame progression and bounties.
+
+## 10. Source & Patch Notes
+
+- All source code is modular and organized by system (character, inventory, map, skills, quests, social, settings, patch, assets, etc.).
+- Patch notes are maintained in PATCH_NOTES.md and summarize all major updates, bug fixes, and new features.
+- Debugging improvements: All major systems now log errors and important events to debug.log. Character select is now fully connected to persistent save/load. Season, dungeon, and pit systems are robust and UI-integrated.
