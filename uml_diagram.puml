@@ -1,0 +1,28 @@
+@startuml
+' UML for core systems (simplified)
+class MainMenuGUI
+class CharacterSystem
+class Inventory
+class SkillTree
+class PassivesTree
+class Party
+class TrialGroup
+class RaidGroup
+class Nemesis
+class PatchSystem
+class DebugLog
+
+MainMenuGUI --> CharacterSystem
+MainMenuGUI --> Inventory
+MainMenuGUI --> SkillTree
+MainMenuGUI --> PassivesTree
+MainMenuGUI --> PatchSystem
+PatchSystem --> DebugLog
+CharacterSystem --> Party
+CharacterSystem --> TrialGroup
+CharacterSystem --> RaidGroup
+CharacterSystem --> Nemesis
+CharacterSystem --> SkillTree
+CharacterSystem --> PassivesTree
+
+@enduml

@@ -1,0 +1,6 @@
+# Debug log for Diablo 4: Eternal Quest
+# All errors, warnings, and info from the patch/update system and main game will be logged here.
+# Log format: [ISO timestamp] message
+
+# Example:
+# [2025-05-20T12:00:00] Patch v0.1.0 applied: Initial release
