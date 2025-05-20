@@ -3,6 +3,7 @@
 ## Acts & Chapters
 
 ### Act I: Shadows Over Sanctuary
+
 - Chapter 1: The Ruined Village
 - Chapter 2: The Howling Wilds
 - Chapter 3: The First Sigil

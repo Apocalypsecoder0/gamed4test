@@ -7,6 +7,7 @@ import importlib.util
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import simpledialog
+from PIL import Image, ImageTk
 
 # Import referenced subsystems (if available)
 try:
@@ -538,12 +539,18 @@ class TeleportSystem:
         # For demo: just return the location name as the new zone
         return f"Teleported {player} to {location_name}!"
 
+# (Duplicate style_button definition removed)
+
+# (Duplicate style_submenu definition removed)
+
 # === MAIN MENU GUI ===
 class MainMenuGUI:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("Arcane Engine Main Menu")
-        self.character = None  # Store the current character
+        self.root.title("Arcane Engine - Main Menu")
+        self.character = None
+        self.game_world = None
+        self.game_stats = {'characters_created': 0}
         self.season_manager = SeasonManager()
         self.nightmare_manager = NightmareDungeonManager()
         self.social_system = SocialSystem()
@@ -554,103 +561,446 @@ class MainMenuGUI:
         self.instance_base_system = InstanceBaseSystem()
         self.party_finder = PartyFinderSystem(self.party_system, self.dungeon_system)
         self.dungeon_finder = DungeonFinderSystem(self.party_system, self.dungeon_system, self.instance_base_system)
-        self.teleport_system = None  # Will be set after world creation
+        self.teleport_system = None
+        self._bg_img = None
         self.show_loading_screen()
         self.create_menu()
 
-    def show_loading_screen(self):
-        loading = tk.Toplevel(self.root)
-        loading.title("Loading...")
-        loading.geometry("400x250")
-        tk.Label(loading, text="ARCANE ENGINE: ETERNAL QUEST", font=("Arial", 20, "bold"), fg="#B22222").pack(pady=20)
-        tk.Label(loading, text="by Shadow Studios", font=("Arial", 12)).pack(pady=5)
-        tk.Label(loading, text="Engine: Arcane Engine v1.0", font=("Arial", 10, "italic")).pack(pady=5)
-        tk.Label(loading, text="Loading... Please wait", font=("Arial", 12)).pack(pady=30)
-        self.root.update()
-        self.root.after(1800, loading.destroy)
+    def launch_inventory(self):
+        win = tk.Toplevel(self.root)
+        win.title("Inventory System")
+        self._style_submenu(win)
+        tk.Label(win, text="Inventory System (Demo)").pack(pady=5)
+        tk.Label(win, text="Feature not implemented yet.").pack(pady=5)
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=10)
 
-    def create_menu(self):
-        frame = tk.Frame(self.root)
-        frame.pack(pady=10)
-        tk.Label(frame, text="ARCANE ENGINE: ETERNAL QUEST", font=("Arial", 18, "bold"), fg="#B22222").pack(pady=5)
-        tk.Label(frame, text="by Shadow Studios", font=("Arial", 10)).pack()
-        tk.Label(frame, text="Engine: Arcane Engine v1.0", font=("Arial", 9, "italic")).pack(pady=2)
-        tk.Button(frame, text="New Game", width=30, command=self.new_game).pack(pady=5)
-        tk.Button(frame, text="Continue", width=30, command=self.continue_game).pack(pady=5)
-        tk.Button(frame, text="Load Game", width=30, command=self.load_game).pack(pady=5)
-        tk.Button(frame, text="Save Game", width=30, command=self.save_game).pack(pady=5)
-        tk.Button(frame, text="Patch Notes", width=30, command=self.show_patch_notes).pack(pady=5)
-        tk.Button(frame, text="Character System", width=30, command=self.launch_character).pack(pady=5)
-        tk.Button(frame, text="Inventory System", width=30, command=self.launch_inventory).pack(pady=5)
-        tk.Button(frame, text="Skills System", width=30, command=self.launch_skills).pack(pady=5)
-        tk.Button(frame, text="Quests System", width=30, command=self.launch_quests).pack(pady=5)
-        tk.Button(frame, text="Map System", width=30, command=self.launch_map).pack(pady=5)
-        # Fix line 41: add missing methods if not present
-        if not hasattr(self, 'launch_social'):
-            self.launch_social = lambda: messagebox.showinfo("Social System", "Social system not implemented.")
-        if not hasattr(self, 'launch_settings'):
-            self.launch_settings = lambda: messagebox.showinfo("Settings", "Settings system not implemented.")
-        tk.Button(frame, text="Social System", width=30, command=self.launch_social).pack(pady=5)
-        tk.Button(frame, text="Settings", width=30, command=self.launch_settings).pack(pady=5)
-        tk.Button(frame, text="Game Credits", width=30, command=self.show_credits).pack(pady=5)
-        tk.Button(frame, text="Exit", width=30, command=self.root.quit).pack(pady=20)
-        tk.Button(frame, text="Help / Tutorial", command=lambda: show_help_window(self.root)).pack(pady=3)
-        tk.Button(frame, text="Season Mode", command=self.show_season_window).pack(pady=3)
-        tk.Button(frame, text="Pit of Artificers", command=self.show_pit_window).pack(pady=3)
-        tk.Button(frame, text="Nightmare Dungeons", command=self.show_nightmare_window).pack(pady=3)
-        tk.Button(frame, text="Character Select", command=self.launch_character_select).pack(pady=3)
-        tk.Button(frame, text="Raids", width=30, command=self.launch_raids).pack(pady=3)
-        tk.Button(frame, text="Trials", width=30, command=self.launch_trials).pack(pady=3)
-        tk.Button(frame, text="Dungeons", width=30, command=self.launch_dungeons).pack(pady=3)
-        tk.Button(frame, text="Party Finder", width=30, command=self.launch_party_finder).pack(pady=3)
-        tk.Button(frame, text="Dungeon Finder", width=30, command=self.launch_dungeon_finder).pack(pady=3)
-        tk.Button(frame, text="Teleport", width=30, command=self.launch_teleport).pack(pady=3)
+    def launch_skills(self):
+        win = tk.Toplevel(self.root)
+        win.title("Skills System")
+        self._style_submenu(win)
+        tk.Label(win, text="Skills System (Demo)").pack(pady=5)
+        tk.Label(win, text="Feature not implemented yet.").pack(pady=5)
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=10)
 
-    def new_game(self):
-        # Initialize/reset game stats for a new game
-        self.game_stats = {
-            'characters_created': 0,
-            'monsters_defeated': 0,
-            'bosses_defeated': 0,
-            'quests_completed': 0,
-            'dungeons_cleared': 0,
-            'raids_completed': 0,
-            'trials_completed': 0,
-            'items_looted': 0,
-            'gold_earned': 0,
-            'play_time_minutes': 0,
-            'highest_level': 1,
-            'world_tier': 1,
-            'season_number': 0,
-            'paragon_points_earned': 0
+    def launch_quests(self):
+        win = tk.Toplevel(self.root)
+        win.title("Quests System")
+        self._style_submenu(win)
+        tk.Label(win, text="Quests System (Demo)").pack(pady=5)
+        tk.Label(win, text="Feature not implemented yet.").pack(pady=5)
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=10)
+
+    def launch_social(self):
+        # Launch the Social System GUI
+        SocialSystemGUI(self.root, self.social_system)
+
+    def run(self):
+        self.root.mainloop()
+
+    def create_game_world(self):
+        # Minimal implementation for demo purposes
+        self.game_world = {
+            'zone': 'Sanctuary',
+            'world_tier': 1
         }
-        # Generate a random seed for the game engine
-        self.seed = int(time.time() * 1000) ^ random.randint(0, 2**32-1)
-        random.seed(self.seed)
-        # Character creation dialog
-        self.create_character_dialog()
+        # Optionally, initialize teleport_system with a dummy world map
+        world_map = {
+            (0, 0): {'name': 'Sanctuary', 'type': 'Town'},
+            (1, 0): {'name': 'Shadow Crypt', 'type': 'Dungeon'},
+            (0, 1): {'name': 'Frost Cavern', 'type': 'Dungeon'},
+        }
+        self.teleport_system = TeleportSystem(world_map)
+
+    def start_campaign_story(self):
+        # Placeholder: Launch campaign gameplay window
+        self.launch_campaign_gameplay()
 
     def load_character_list(self):
-        # Load up to 12 characters from a save file
+        # Loads the character list from a file, or returns an empty list if not found
         try:
-            if os.path.exists('characters.d4save'):
-                with open('characters.d4save', 'rb') as f:
-                    char_list = pickle.load(f)
-                return char_list[:12]
-        except Exception as e:
-            messagebox.showerror("Load Error", f"Failed to load character list: {e}")
-        return []
+            with open("characters.pkl", "rb") as f:
+                return pickle.load(f)
+        except (FileNotFoundError, EOFError, pickle.PickleError):
+            return []
 
     def save_character_list(self, char_list):
+        # Saves the character list to a file
         try:
-            with open('characters.d4save', 'wb') as f:
+            with open("characters.pkl", "wb") as f:
                 pickle.dump(char_list, f)
         except Exception as e:
             messagebox.showerror("Save Error", f"Failed to save character list: {e}")
 
+    def save_game(self):
+        # Save the current character to the character list file
+        if not self.character:
+            messagebox.showinfo("Save Game", "No character loaded to save.")
+            return
+        char_list = self.load_character_list()
+        # Update or add the current character
+        updated = False
+        for i, char in enumerate(char_list):
+            if char.get('name') == self.character.get('name'):
+                char_list[i] = self.character
+                updated = True
+                break
+        if not updated:
+            char_list.append(self.character)
+        try:
+            with open("characters.pkl", "wb") as f:
+                pickle.dump(char_list, f)
+            messagebox.showinfo("Save Game", "Game saved successfully!")
+        except Exception as e:
+            messagebox.showerror("Save Game", f"Failed to save game: {e}")
+
+    def continue_game(self):
+        # Attempt to load the most recent character and start the campaign
+        char_list = self.load_character_list()
+        if char_list:
+            self.character = char_list[-1]  # Continue with the last character
+            self.start_campaign_story()
+        else:
+            messagebox.showinfo("Continue", "No saved characters found. Please create a new game.")
+
+    def new_game(self):
+        # Example implementation: open character creation dialog
+        self.create_character_dialog()
+
+    def load_game(self):
+        # Placeholder implementation for loading a game
+        char_list = self.load_character_list()
+        if char_list:
+            # Let user select a character to load
+            def on_select(character):
+                self.character = character
+                self.start_campaign_story()
+            CharacterSelectGUI(self.root, char_list, on_select)
+        else:
+            messagebox.showinfo("Load Game", "No saved characters found. Please create a new game.")
+
+    def show_loading_screen(self, message="Loading... Please wait", duration=1800):
+        loading = tk.Toplevel(self.root)
+        loading.title("Loading...")
+        loading.geometry("420x260")
+        loading.configure(bg="#181818")
+        # Themed fonts/colors
+        title_font = ("Georgia", 22, "bold")
+        subtitle_font = ("Georgia", 12, "italic")
+        label_fg = "#e0c080"
+        # Title/logo
+        tk.Label(loading, text="ARCANE ENGINE: ETERNAL QUEST", font=title_font, fg=label_fg, bg="#181818").pack(pady=(22,2))
+        tk.Label(loading, text="by Shadow Studios", font=subtitle_font, fg="#b0a080", bg="#181818").pack()
+        tk.Label(loading, text="Engine: Arcane Engine v1.0", font=("Georgia", 10, "italic"), fg="#b0a080", bg="#181818").pack(pady=(0,18))
+        # Animated loading dots
+        loading_var = tk.StringVar(value=message)
+        label = tk.Label(loading, textvariable=loading_var, font=("Georgia", 13), fg="#fffbe6", bg="#181818")
+        label.pack(pady=10)
+        # Progress bar (simple animation)
+        progress = tk.Canvas(loading, width=260, height=18, bg="#23201a", highlightthickness=0)
+        progress.pack(pady=10)
+        bar = progress.create_rectangle(2, 2, 2, 16, fill="#e0c080", width=0)
+        # Animate progress bar and dots
+        steps = 30
+        interval = max(30, duration // steps)
+        def animate(i=0):
+            if i <= steps:
+                progress.coords(bar, 2, 2, 2 + (256 * i // steps), 16)
+                dots = '.' * ((i // 3) % 4)
+                loading_var.set(f"{message}{dots}")
+                loading.update_idletasks()
+                loading.after(interval, lambda: animate(i+1))
+            else:
+                loading.destroy()
+        animate()
+        self.root.update()
+
+    def create_menu(self):
+        self.root.geometry("1024x640")
+        self.root.title("Arcane Engine - Main Menu")
+        self.root.configure(bg="#181818")
+        # --- Add subtle vignette background image if available ---
+        vignette_path = os.path.join(os.path.dirname(__file__), "vignette_bg.png")
+        if os.path.exists(vignette_path):
+            img = Image.open(vignette_path).resize((1024, 640), Image.LANCZOS)
+            self._bg_img = ImageTk.PhotoImage(img)
+            bg_label = tk.Label(self.root, image=self._bg_img, borderwidth=0)
+            bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+        frame = tk.Frame(self.root, bg="#181818")
+        frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        # Title
+        tk.Label(frame, text="ARCANE ENGINE", font=("Georgia", 36, "bold"), fg="#e0c080", bg="#181818").pack(pady=(30, 8))
+        tk.Label(frame, text="Eternal Quest", font=("Georgia", 18, "italic"), fg="#b0a080", bg="#181818").pack(pady=(0, 24))
+        # Menu buttons with icons
+        menu_buttons = [
+            ("New Game", self.new_game, "icon_newgame.png"),
+            ("Continue", self.continue_game, "icon_continue.png"),
+            ("Load Game", self.load_game, "icon_load.png"),
+            ("Save Game", self.save_game, "icon_save.png"),
+            ("Patch Notes", self.show_patch_notes, "icon_patch.png"),
+            ("Character System", lambda: messagebox.showinfo("Character System", "Character system not implemented."), "icon_character.png"),
+            ("Inventory System", self.launch_inventory, "icon_inventory.png"),
+            ("Skills System", self.launch_skills, "icon_skills.png"),
+            ("Quests System", self.launch_quests, "icon_quests.png"),
+            # ("Map System", self.launch_map, "icon_map.png"),
+            ("Social System", self.launch_social, "icon_social.png"),
+            ("Settings", self.launch_settings, "icon_settings.png"),
+            ("Game Credits", self.show_credits, "icon_credits.png"),
+            ("Exit", self.root.quit, "icon_exit.png"),
+            ("Help / Tutorial", lambda: show_help_window(self.root), "icon_help.png"),
+            ("Season Mode", self.show_season_window, "icon_season.png"),
+            ("Pit of Artificers", self.show_pit_window, "icon_pit.png"),
+            ("Nightmare Dungeons", self.show_nightmare_window, "icon_nightmare.png"),
+            ("Raids", self.launch_raids, "icon_raid.png"),
+            ("Trials", self.launch_trials, "icon_trial.png"),
+            ("Dungeons", self.launch_dungeons, "icon_dungeon.png"),
+            ("Party Finder", self.launch_party_finder, "icon_party.png"),
+            ("Dungeon Finder", self.launch_dungeon_finder, "icon_dungeonfinder.png"),
+            ("Teleport", self.launch_teleport, "icon_teleport.png"),
+            ("Codex (Legendary Items)", self.launch_codex, "icon_codex.png"),
+        ]
+        for text, cmd, icon in menu_buttons:
+            btn = tk.Button(frame, text=text, width=24, height=2, command=cmd)
+            style_button(btn, icon_path=os.path.join(os.path.dirname(__file__), icon))
+            btn.pack(pady=4)
+        # Footer
+        tk.Label(frame, text="Inspired by Diablo 4, Last Epoch, and classic ARPGs.", font=("Georgia", 10, "italic"), fg="#b0a080", bg="#181818").pack(pady=(24, 8))
+
+    def show_patch_notes(self):
+        messagebox.showinfo("Patch Notes", "Patch Notes:\n\n- Initial release of Arcane Engine Main Menu.\n- Added character creation, campaign, and basic systems.\n- More features coming soon!")
+
+    def show_credits(self):
+        messagebox.showinfo("Game Credits", "Arcane Engine: Eternal Quest\n\nDeveloped by Shadow Studios\nInspired by Diablo 4, Last Epoch, and classic ARPGs.\n\nProgramming & Design: Shadow\nSpecial Thanks: The ARPG Community")
+
+    def show_pit_window(self):
+        win = tk.Toplevel(self.root)
+        win.title("Pit of Artificers")
+        self._style_submenu(win)
+        pit = PitOfArtificers()
+        tk.Label(win, text=pit.get_challenge()).pack(pady=5)
+        tk.Label(win, text="Defeat the Artificer to earn masterwork materials!").pack(pady=5)
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=10)
+
+    def show_nightmare_window(self):
+        win = tk.Toplevel(self.root)
+        win.title("Nightmare Dungeons")
+        self._style_submenu(win)
+        dungeons = self.nightmare_manager.list_dungeons()
+        tk.Label(win, text="Available Nightmare Dungeons:").pack(pady=5)
+        for dungeon in dungeons:
+            tk.Label(win, text=f"{dungeon['name']} (Tier {dungeon['tier']})").pack(anchor='w')
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=10)
+
+    def show_season_window(self):
+        win = tk.Toplevel(self.root)
+        win.title("Season Mode")
+        self._style_submenu(win)
+        current_season = self.season_manager.get_current_season()
+        tk.Label(win, text=f"Current Season: {current_season['name']}").pack(pady=5)
+        tk.Label(win, text=f"Season Number: {current_season['number']}").pack()
+        tk.Label(win, text=f"Start: {current_season['start']}  End: {current_season['end']}").pack()
+        tk.Label(win, text="Features: " + ", ".join(current_season.get('features', []))).pack(pady=5)
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=10)
+
+    def launch_settings(self):
+        win = tk.Toplevel(self.root)
+        win.title("Settings")
+        self._style_submenu(win)
+        tk.Label(win, text="Settings (Demo)").pack(pady=5)
+        tk.Label(win, text="Feature not implemented yet.").pack(pady=5)
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=10)
+
+    # --- Submenu styling helper ---
+    def _style_submenu(self, win):
+        style_submenu(win)
+
+    # Patch all submenus to use _style_submenu
+    def launch_raids(self):
+        win = tk.Toplevel(self.root)
+        win.title("Raids")
+        self._style_submenu(win)
+        raids = self.raid_system.list_raids()
+        tk.Label(win, text="Available Raids:").pack(pady=5)
+        for raid in raids:
+            tk.Label(win, text=raid['name']).pack(anchor='w')
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=5)
+
+    def launch_trials(self):
+        win = tk.Toplevel(self.root)
+        win.title("Trials")
+        self._style_submenu(win)
+        trials = self.trial_system.list_trials()
+        tk.Label(win, text="Available Trials:").pack(pady=5)
+        for trial in trials:
+            tk.Label(win, text=trial['name']).pack(anchor='w')
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=5)
+
+    def launch_dungeons(self):
+        win = tk.Toplevel(self.root)
+        win.title("Dungeons")
+        self._style_submenu(win)
+        dungeons = self.dungeon_system.list_dungeons()
+        tk.Label(win, text="Available Dungeons:").pack(pady=5)
+        for dungeon in dungeons:
+            tk.Label(win, text=dungeon['name']).pack(anchor='w')
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=5)
+
+    def launch_party_finder(self):
+        win = tk.Toplevel(self.root)
+        win.title("Party Finder (LFG)")
+        self._style_submenu(win)
+        tk.Label(win, text="Join Party Finder for a Dungeon:").pack(pady=5)
+        dungeons = self.dungeon_system.list_dungeons()
+        dungeon_var = tk.StringVar(win)
+        dungeon_var.set(dungeons[0]['name'] if dungeons else "")
+        tk.OptionMenu(win, dungeon_var, *[d['name'] for d in dungeons]).pack(pady=5)
+        name_entry = tk.Entry(win)
+        name_entry.pack(pady=5)
+        def join_lfg():
+            player_name = name_entry.get().strip() or "You"
+            dungeon_name = dungeon_var.get()
+            self.party_finder.join_lfg(player_name, dungeon_name)
+            messagebox.showinfo("LFG", f"{player_name} joined LFG for {dungeon_name}!")
+        tk.Button(win, text="Join LFG", command=join_lfg).pack(pady=5)
+        def form_parties():
+            dungeon_name = dungeon_var.get()
+            formed = self.party_finder.find_party(dungeon_name)
+            if formed:
+                msg = "\n".join([f"Party formed: {', '.join(p['members'])}" for p in formed])
+                messagebox.showinfo("Party Formed", msg)
+            else:
+                messagebox.showinfo("Party Formed", "Not enough players to form a party yet.")
+        tk.Button(win, text="Form Parties", command=form_parties).pack(pady=5)
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=5)
+
+    def launch_dungeon_finder(self):
+        win = tk.Toplevel(self.root)
+        win.title("Dungeon Finder (LFD)")
+        self._style_submenu(win)
+        tk.Label(win, text="Queue for a Dungeon:").pack(pady=5)
+        dungeons = self.dungeon_system.list_dungeons()
+        dungeon_var = tk.StringVar(win)
+        dungeon_var.set(dungeons[0]['name'] if dungeons else "")
+        tk.OptionMenu(win, dungeon_var, *[d['name'] for d in dungeons]).pack(pady=5)
+        name_entry = tk.Entry(win)
+        name_entry.pack(pady=5)
+        def join_lfd():
+            player_name = name_entry.get().strip() or "You"
+            dungeon_name = dungeon_var.get()
+            self.dungeon_finder.join_lfd(player_name, dungeon_name)
+            messagebox.showinfo("LFD", f"{player_name} joined Dungeon Finder for {dungeon_name}!")
+        tk.Button(win, text="Join Dungeon Finder", command=join_lfd).pack(pady=5)
+        def match_parties():
+            dungeon_name = dungeon_var.get()
+            formed = self.dungeon_finder.match_parties(dungeon_name)
+            if formed:
+                msg = "\n".join([f"Party formed: {', '.join(p['members'])} (Instance {p['instance_id']})" for p in formed])
+                messagebox.showinfo("Dungeon Instance Created", msg)
+            else:
+                messagebox.showinfo("Dungeon Instance", "Not enough players to form a party yet.")
+        tk.Button(win, text="Form Parties & Create Instance", command=match_parties).pack(pady=5)
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=5)
+
+    def launch_teleport(self):
+        if not self.teleport_system or not callable(getattr(self.teleport_system, 'teleport', None)):
+            messagebox.showerror("Teleport", "World not initialized yet.")
+            return
+        win = tk.Toplevel(self.root)
+        win.title("Teleport")
+        self._style_submenu(win)
+        tk.Label(win, text="Teleport to:").pack(pady=5)
+        locs = self.teleport_system.get_teleport_locations()
+        loc_var = tk.StringVar(win)
+        loc_var.set(locs[0]['name'] if locs else "")
+        tk.OptionMenu(win, loc_var, *[l['name'] for l in locs]).pack(pady=5)
+        name_entry = tk.Entry(win)
+        name_entry.pack(pady=5)
+        def do_teleport():
+            player = name_entry.get().strip() or "You"
+            loc = loc_var.get()
+            if self.teleport_system is not None and callable(getattr(self.teleport_system, 'teleport', None)):
+                result = self.teleport_system.teleport(player, loc)
+                messagebox.showinfo("Teleport", result)
+            else:
+                messagebox.showerror("Teleport", "Teleport system not available.")
+        tk.Button(win, text="Teleport", command=do_teleport).pack(pady=5)
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=5)
+
+    def launch_combat_menu(self):
+        # Simple combat menu placeholder
+        win = tk.Toplevel(self.root)
+        win.title("Combat Menu")
+        self._style_submenu(win)
+        tk.Label(win, text="Combat System (Demo)").pack(pady=5)
+        tk.Label(win, text="Feature not implemented yet.").pack(pady=5)
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=10)
+
+    def launch_crafting_menu(self):
+        # Simple crafting menu placeholder
+        win = tk.Toplevel(self.root)
+        win.title("Crafting Menu")
+        self._style_submenu(win)
+        tk.Label(win, text="Crafting System (Demo)").pack(pady=5)
+        tk.Label(win, text="Feature not implemented yet.").pack(pady=5)
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=10)
+
+    def launch_codex(self):
+        win = tk.Toplevel(self.root)
+        win.title("Codex (Legendary Items)")
+        self._style_submenu(win)
+        tk.Label(win, text="Legendary & Unique Items Codex").pack(pady=5)
+        codex_frame = tk.Frame(win, bg="#181818")
+        codex_frame.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
+        for item in CODEX_ITEMS:
+            item_str = f"{item['name']} ({item['type']}, {item['rarity']})\n" \
+                       f"Stats: {', '.join(item['stats'])}\n" \
+                       f"{item['description']}\n"
+            tk.Label(codex_frame, text=item_str, anchor='w', justify='left').pack(anchor='w', pady=2)
+        tk.Button(win, text="Close", command=win.destroy).pack(pady=10)
+
+    # --- Update all submenus to use _style_submenu ---
+    def launch_campaign_gameplay(self):
+        if not self.character:
+            messagebox.showerror("Error", "No character loaded.")
+            return
+        gameplay = tk.Toplevel(self.root)
+        gameplay.title("Campaign Gameplay")
+        self._style_submenu(gameplay)
+        tk.Label(gameplay, text=f"{self.character['name']} the {self.character['class']} - {'Hardcore' if self.character.get('hardcore') else 'Normal'}").pack(pady=10)
+        stats = self.character.get('stats', {}) if isinstance(self.character, dict) else {}
+        stats_str = '\n'.join([f"{k}: {v}" for k, v in stats.items()]) if isinstance(stats, dict) and bool(stats) else 'No stats.'
+        tk.Label(gameplay, text=f"Level: {self.character.get('level', 1)} | XP: {self.character.get('xp', 0)}").pack()
+        tk.Label(gameplay, text=f"Stats:\n{stats_str}").pack()
+        tk.Label(gameplay, text=f"Inventory: {len(self.character.get('inventory', []))} items").pack()
+        tk.Label(gameplay, text=f"Quests: {len(self.character.get('quests', []))} active").pack()
+        tk.Label(gameplay, text=f"Skills: {len(self.character.get('skills', []))} unlocked").pack()
+        if not hasattr(self, 'game_world') or not self.game_world:
+            self.create_game_world()
+        zone = self.game_world['zone'] if self.game_world and isinstance(self.game_world, dict) and 'zone' in self.game_world else 'Unknown'
+        tk.Label(gameplay, text=f"Current Zone: {zone}").pack(pady=5)
+        world_tier = self.game_world['world_tier'] if self.game_world and isinstance(self.game_world, dict) and 'world_tier' in self.game_world else 1
+        tk.Label(gameplay, text=f"World Tier: {world_tier}").pack()
+        # --- Bottom action bar (Diablo 4 style) ---
+        action_bar = tk.Frame(gameplay, bg="#181818")
+        action_bar.pack(side=tk.BOTTOM, fill=tk.X, pady=10)
+        # Health orb
+        health_canvas = tk.Canvas(action_bar, width=64, height=64, bg="#181818", highlightthickness=0)
+        health_canvas.pack(side=tk.LEFT, padx=16)
+        health_canvas.create_oval(4, 4, 60, 60, fill="#b4002a", outline="#e0c080", width=3)
+        health_canvas.create_text(32, 32, text="HP", fill="#fffbe6", font=("Georgia", 12, "bold"))
+        # Quick slots
+        for i in range(5):
+            slot = tk.Label(action_bar, text=f"{i+1}", width=4, height=2, bg="#23201a", fg="#e0c080", font=("Georgia", 14, "bold"), relief=tk.RIDGE, borderwidth=2)
+            slot.pack(side=tk.LEFT, padx=6)
+        # Mana orb
+        mana_canvas = tk.Canvas(action_bar, width=64, height=64, bg="#181818", highlightthickness=0)
+        mana_canvas.pack(side=tk.RIGHT, padx=16)
+        mana_canvas.create_oval(4, 4, 60, 60, fill="#2a3ab4", outline="#e0c080", width=3)
+        mana_canvas.create_text(32, 32, text="MP", fill="#fffbe6", font=("Georgia", 12, "bold"))
+
     def create_character_dialog(self):
         dialog = tk.Toplevel(self.root)
         dialog.title("Create New Character")
+        self._style_submenu(dialog)
         tk.Label(dialog, text="Enter Character Name:").grid(row=0, column=0, sticky="e")
         name_entry = tk.Entry(dialog)
         name_entry.grid(row=0, column=1)
@@ -694,552 +1044,72 @@ class MainMenuGUI:
                 messagebox.showerror("Error", "All 12 character slots are full. Delete a character to create a new one.")
         tk.Button(dialog, text="Create", command=confirm).grid(row=3, column=0, columnspan=2, pady=10)
 
-    def start_campaign_story(self):
-        if not self.character:
-            messagebox.showerror("Error", "No character found. Please create a character first.")
-            return
-        intro = (
-            f"Welcome, {self.character['name']} the {self.character['class']}!\n\n"
-            f"Mode: {'Hardcore' if self.character.get('hardcore') else 'Normal'}\n\n"
-            "Your journey begins in the snow-swept wilds of Sanctuary.\n"
-            "Darkness stirs, and the fate of the world rests on your shoulders.\n\n"
-            "[Prologue: The First Steps]\n\n"
-            "You awaken in a ruined village, the distant howls of monsters echoing in the night...\n"
-            "(Campaign story mode started!)"
-        )
-        messagebox.showinfo("Campaign Start", intro)
+# ... existing code ...
+class StartMenu:
+    def __init__(self, root, on_start):
+        self.root = root
+        self.on_start = on_start
+        self._bg_img = None
+        self._draw_ui()
 
-    def continue_game(self):
-        # Continue logic for resuming last character and campaign
-        if not hasattr(self, 'character') or self.character is None:
-            messagebox.showinfo("Continue", "No saved character found. Please start a new game.")
-            return
-        if not isinstance(self.character, dict):
-            messagebox.showerror("Continue", "Character data is invalid.")
-            return
-        # Show full stats and launch gameplay
-        stats = self.character.get('stats', {}) if isinstance(self.character, dict) else {}
-        stats_str = '\n'.join([f"{k}: {v}" for k, v in stats.items()]) if isinstance(stats, dict) and bool(stats) else 'No stats.'
-        info = (
-            f"Continuing your adventure as {self.character.get('name', 'Unknown')} the {self.character.get('class', 'Unknown')}!\n"
-            f"Mode: {'Hardcore' if self.character.get('hardcore') else 'Normal'}\n"
-            f"Level: {self.character.get('level', 1)}\nXP: {self.character.get('xp', 0)}\n"
-            f"Stats:\n{stats_str}\n"
-            f"Inventory: {len(self.character.get('inventory', []))} items\n"
-            f"Quests: {len(self.character.get('quests', []))} active\n"
-            f"Skills: {len(self.character.get('skills', []))} unlocked\n"
-            "\n(Implement full state restore and gameplay logic here.)"
-        )
-        messagebox.showinfo("Continue", info)
-        self.launch_campaign_gameplay()
+    def _draw_ui(self):
+        self.root.geometry("1024x640")
+        self.root.title("Arcane Engine - Start Menu")
+        self.root.configure(bg="#181818")
+        # Optional: background vignette
+        vignette_path = os.path.join(os.path.dirname(__file__), "vignette_bg.png")
+        if os.path.exists(vignette_path):
+            img = Image.open(vignette_path).resize((1024, 640), Image.LANCZOS)
+            self._bg_img = ImageTk.PhotoImage(img)
+            bg_label = tk.Label(self.root, image=self._bg_img, borderwidth=0)
+            bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+        frame = tk.Frame(self.root, bg="#181818")
+        frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        tk.Label(frame, text="ARCANE ENGINE", font=("Georgia", 44, "bold"), fg="#e0c080", bg="#181818").pack(pady=(60, 10))
+        tk.Label(frame, text="Eternal Quest", font=("Georgia", 20, "italic"), fg="#b0a080", bg="#181818").pack(pady=(0, 30))
+        tk.Label(frame, text="by Shadow Studios", font=("Georgia", 14, "italic"), fg="#b0a080", bg="#181818").pack(pady=(0, 30))
+        start_btn = tk.Button(frame, text="Start", width=18, height=2, command=self.on_start)
+        style_button(start_btn, icon_path=os.path.join(os.path.dirname(__file__), "icon_start.png"))
+        start_btn.pack(pady=16)
+        tk.Label(frame, text="Inspired by Diablo 4, Last Epoch, and classic ARPGs.", font=("Georgia", 10, "italic"), fg="#b0a080", bg="#181818").pack(pady=(40, 8))
 
-    def launch_campaign_gameplay(self):
-        # Main gameplay window with world creation after new game
-        if not self.character:
-            messagebox.showerror("Error", "No character loaded.")
-            return
-        gameplay = tk.Toplevel(self.root)
-        gameplay.title("Campaign Gameplay")
-        tk.Label(gameplay, text=f"{self.character['name']} the {self.character['class']} - {'Hardcore' if self.character.get('hardcore') else 'Normal'}", font=("Arial", 14, "bold")).pack(pady=10)
-        # Show stats
-        stats = self.character.get('stats', {}) if isinstance(self.character, dict) else {}
-        stats_str = '\n'.join([f"{k}: {v}" for k, v in stats.items()]) if isinstance(stats, dict) and bool(stats) else 'No stats.'
-        tk.Label(gameplay, text=f"Level: {self.character.get('level', 1)} | XP: {self.character.get('xp', 0)}").pack()
-        tk.Label(gameplay, text=f"Stats:\n{stats_str}").pack()
-        # Show inventory, quests, skills summary
-        tk.Label(gameplay, text=f"Inventory: {len(self.character.get('inventory', []))} items").pack()
-        tk.Label(gameplay, text=f"Quests: {len(self.character.get('quests', []))} active").pack()
-        tk.Label(gameplay, text=f"Skills: {len(self.character.get('skills', []))} unlocked").pack()
-        # World creation/summary after new game
-        if not hasattr(self, 'game_world') or not self.game_world:
-            self.create_game_world()
-        tk.Label(gameplay, text=f"Current Zone: {self.game_world.get('zone', 'Unknown')}").pack(pady=5)
-        tk.Label(gameplay, text=f"World Tier: {self.game_world.get('world_tier', 1)}").pack()
-        # Gameplay actions
-        tk.Button(gameplay, text="Open Map", command=self.launch_map).pack(pady=2)
-        tk.Button(gameplay, text="Open Inventory", command=self.launch_inventory).pack(pady=2)
-        tk.Button(gameplay, text="Open Quests", command=self.launch_quests).pack(pady=2)
-        tk.Button(gameplay, text="Open Skills", command=self.launch_skills).pack(pady=2)
-        tk.Button(gameplay, text="Open Social", command=self.launch_social).pack(pady=2)
-        tk.Button(gameplay, text="Open Settings", command=self.launch_settings).pack(pady=2)
-        tk.Button(gameplay, text="Combat Menu", command=self.launch_combat_menu).pack(pady=2)
-        tk.Button(gameplay, text="Crafting Menu", command=self.launch_crafting_menu).pack(pady=2)
-        tk.Button(gameplay, text="Exit to Main Menu", command=gameplay.destroy).pack(pady=10)
+# --- Helper for Diablo 4-style button styling ---
+def style_button(btn, icon_path=None):
+    btn.config(
+        font=("Georgia", 14, "bold"),
+        bg="#23201a",
+        fg="#e0c080",
+        activebackground="#40351a",
+        activeforeground="#fffbe6",
+        relief=tk.FLAT,
+        bd=0,
+        cursor="hand2",
+        highlightthickness=0,
+        padx=8,
+        pady=4,
+        compound=tk.LEFT if icon_path else None
+    )
+    if icon_path and os.path.exists(icon_path):
+        img = Image.open(icon_path).resize((28, 28), Image.LANCZOS)
+        btn._icon = ImageTk.PhotoImage(img)
+        btn.config(image=btn._icon)
 
-    def create_game_world(self):
-        # Create a new game world after new game
-        # Generate a world seed for reproducibility
-        self.world_seed = int(time.time() * 1000) ^ random.randint(0, 2**32-1)
-        random.seed(self.world_seed)
-        # Define a grid-based world map (10x10 for example)
-        self.world_map = {}
-        # Expanded world geography: continents, countries, kingdoms, zones
-        continents = [
-            {'name': 'Sanctuary', 'type': 'Continent', 'x': 0, 'y': 0},
-            {'name': 'Westmarch Isles', 'type': 'Continent', 'x': 9, 'y': 9}
-        ]
-        countries = [
-            {'name': 'Kehjistan', 'type': 'Country', 'x': 3, 'y': 1},
-            {'name': 'Scosglen', 'type': 'Country', 'x': 1, 'y': 8},
-            {'name': 'Hawezar', 'type': 'Country', 'x': 5, 'y': 5},
-            {'name': 'Fractured Peaks', 'type': 'Country', 'x': 2, 'y': 7}
-        ]
-        kingdoms = [
-            {'name': 'Kyovashad', 'type': 'Kingdom', 'x': 2, 'y': 7},
-            {'name': 'Caldeum', 'type': 'Kingdom', 'x': 3, 'y': 1},
-            {'name': 'Westmarch', 'type': 'Kingdom', 'x': 9, 'y': 9}
-        ]
-        towns = [
-            {'name': 'Kyovashad', 'type': 'Town', 'x': 2, 'y': 7},
-            {'name': 'Yelesna', 'type': 'Town', 'x': 4, 'y': 8},
-            {'name': 'Margrave', 'type': 'Town', 'x': 1, 'y': 6},
-            {'name': 'Backwater', 'type': 'Town', 'x': 7, 'y': 2},
-            {'name': 'Gea Kul', 'type': 'City', 'x': 8, 'y': 1},
-            {'name': 'Jirandai', 'type': 'Town', 'x': 6, 'y': 3},
-            {'name': 'Westmarch', 'type': 'City', 'x': 9, 'y': 9},
-            {'name': 'Caldeum', 'type': 'City', 'x': 3, 'y': 1},
-        ]
-        zones = [
-            {'name': 'Blood Marsh', 'type': 'Wilderness', 'x': 5, 'y': 5},
-            {'name': 'Dismal Foothills', 'type': 'Wilderness', 'x': 2, 'y': 2},
-            {'name': 'Forgotten Ruins', 'type': 'Ruins', 'x': 7, 'y': 7},
-        ]
-        # Fill the world map grid with all locations
-        for c in continents:
-            self.world_map[(c['x'], c['y'])] = c
-        for c in countries:
-            self.world_map[(c['x'], c['y'])] = c
-        for k in kingdoms:
-            self.world_map[(k['x'], k['y'])] = k
-        for t in towns:
-            self.world_map[(t['x'], t['y'])] = t
-        for z in zones:
-            self.world_map[(z['x'], z['y'])] = z
-        # Example: assign starting zone, world tier, and other world state
-        self.game_world = {
-            'zone': 'Kyovashad',  # Starting city/zone
-            'zone_coords': (2, 7),
-            'world_tier': self.game_stats.get('world_tier', 1),
-            'difficulty': 'World Tier 1',
-            'time_of_day': 'Morning',
-            'weather': 'Clear',
-            'events': [],
-            'npcs': ['Blacksmith', 'Alchemist', 'Banker', 'Tree of Whispers'],
-            'vendors': ['General Goods', 'Jeweler', 'Purveyor of Curiosities'],
-            'bank': {'slots': 20, 'items': []},
-            'tree_of_whispers': {'grim_favors': 0, 'rewards': []},
-            'world_seed': self.world_seed,
-            'world_map': self.world_map,
-            'continents': [c['name'] for c in continents],
-            'countries': [c['name'] for c in countries],
-            'kingdoms': [k['name'] for k in kingdoms],
-            'towns': [t['name'] for t in towns],
-            'zones': [z['name'] for z in zones],
-        }
-        self.teleport_system = TeleportSystem(self.world_map)
+# --- Helper for Diablo 4-style submenu window styling ---
+def style_submenu(win):
+    win.configure(bg="#181818")
+    for widget in win.winfo_children():
+        if isinstance(widget, tk.Label):
+            widget.config(bg="#181818", fg="#e0c080", font=("Georgia", 13))
+        elif isinstance(widget, tk.Button):
+            style_button(widget)
+        elif isinstance(widget, tk.Entry):
+            widget.config(bg="#23201a", fg="#e0c080", insertbackground="#e0c080", font=("Georgia", 12))
+        elif isinstance(widget, tk.OptionMenu):
+            widget.config(bg="#23201a", fg="#e0c080", font=("Georgia", 12))
+        elif isinstance(widget, tk.Listbox):
+            widget.config(bg="#23201a", fg="#e0c080", selectbackground="#40351a", selectforeground="#fffbe6", font=("Georgia", 12))
 
-    def load_game(self):
-        from tkinter import filedialog
-        file_path = filedialog.askopenfilename(title="Load Game", filetypes=[("Save Files", "*.d4save")])
-        if file_path:
-            try:
-                with open(file_path, "rb") as f:
-                    game_state = pickle.load(f)
-                messagebox.showinfo("Load Game", f"Game loaded from {file_path}\n(Implement state restore)")
-            except Exception as e:
-                messagebox.showerror("Load Error", f"Failed to load: {e}")
-
-    def save_game(self):
-        from tkinter import filedialog
-        file_path = filedialog.asksaveasfilename(title="Save Game", defaultextension=".d4save", filetypes=[("Save Files", "*.d4save")])
-        if file_path:
-            try:
-                game_state = {}  # Replace with actual game state
-                with open(file_path, "wb") as f:
-                    pickle.dump(game_state, f)
-                messagebox.showinfo("Save Game", f"Game saved to {file_path}")
-            except Exception as e:
-                messagebox.showerror("Save Error", f"Failed to save: {e}")
-
-    def launch_character(self):
-        if character_system and hasattr(character_system, 'CharacterSystem') and hasattr(character_system, 'CharacterSystemGUI'):
-            char_system = character_system.CharacterSystem()
-            gui = character_system.CharacterSystemGUI(char_system)
-            gui.run()
-        else:
-            messagebox.showerror("Error", "Character system module not found or incomplete.")
-
-    def launch_inventory(self):
-        mod_name = 'inventory'
-        mod_path = 'inventory.py'
-        try:
-            spec = importlib.util.spec_from_file_location(mod_name, mod_path)
-            if spec and spec.loader:
-                inv_mod = importlib.util.module_from_spec(spec)
-                sys.modules[mod_name] = inv_mod
-                spec.loader.exec_module(inv_mod)
-                inv = inv_mod.Inventory()
-                inv.add_item(inv_mod.Item("Sword of Doom", "Weapon", "Legendary", {"Damage": 100}, (2,1)))
-                inv.add_item(inv_mod.Item("Iron Helm", "Armor", "Rare", {"Armor": 20}, (2,2)))
-                inv.add_item(inv_mod.Item("Health Potion", "Potion", "Common", {"Heal": 50}, (1,1)))
-                inv_mod.InventoryGUI(inv).run()
-            else:
-                messagebox.showerror("Error", "Could not load Inventory module.")
-        except Exception as e:
-            messagebox.showerror("Error", f"Inventory system error: {e}")
-
-    def launch_skills(self):
-        if skills_system:
-            skills_system.SkillsSystemGUI(skills_system.SkillsSystem()).run()
-        else:
-            messagebox.showerror("Error", "Skills system module not found.")
-
-    def launch_quests(self):
-        if quests_system:
-            quests_system.QuestsSystemGUI(quests_system.QuestsSystem()).run()
-        else:
-            messagebox.showerror("Error", "Quests system module not found.")
-
-    def launch_map(self):
-        # Show a world map with continents, countries, kingdoms, towns, and zones on a grid, with interactivity
-        map_win = tk.Toplevel(self.root)
-        map_win.title("World Map")
-        canvas = tk.Canvas(map_win, width=400, height=400, bg="#222")
-        canvas.pack()
-        grid_size = 10
-        cell = 40
-        location_tags = {}
-        # Draw grid
-        for i in range(grid_size+1):
-            canvas.create_line(cell, cell+i*cell, cell+grid_size*cell, cell+i*cell, fill="#444")
-            canvas.create_line(cell+i*cell, cell, cell+i*cell, cell+grid_size*cell, fill="#444")
-        # Draw all locations with different colors and shapes, and add interactivity
-        for (x, y), loc in self.game_world['world_map'].items():
-            tag = f"loc_{x}_{y}"
-            if loc['type'] == 'Continent':
-                canvas.create_rectangle(cell+x*cell-16, cell+y*cell-16, cell+x*cell+16, cell+y*cell+16, outline="#FFD700", width=3, tags=tag)
-                canvas.create_text(cell+x*cell, cell+y*cell-22, text=loc['name'], fill="#FFD700", font=("Arial", 9, "bold"), tags=tag)
-            elif loc['type'] == 'Country':
-                canvas.create_oval(cell+x*cell-14, cell+y*cell-14, cell+x*cell+14, cell+y*cell+14, outline="#00BFFF", width=2, tags=tag)
-                canvas.create_text(cell+x*cell, cell+y*cell-18, text=loc['name'], fill="#00BFFF", font=("Arial", 8, "bold"), tags=tag)
-            elif loc['type'] == 'Kingdom':
-                canvas.create_oval(cell+x*cell-12, cell+y*cell-12, cell+x*cell+12, cell+y*cell+12, outline="#FF69B4", width=2, tags=tag)
-                canvas.create_text(cell+x*cell, cell+y*cell-15, text=loc['name'], fill="#FF69B4", font=("Arial", 8, "bold"), tags=tag)
-            elif loc['type'] == 'City':
-                canvas.create_oval(cell+x*cell-10, cell+y*cell-10, cell+x*cell+10, cell+y*cell+10, fill="#FFD700", tags=tag)
-                canvas.create_text(cell+x*cell, cell+y*cell-13, text=loc['name'], fill="#FFD700", font=("Arial", 8, "bold"), tags=tag)
-            elif loc['type'] == 'Town':
-                canvas.create_oval(cell+x*cell-8, cell+y*cell-8, cell+x*cell+8, cell+y*cell+8, fill="#00FF00", tags=tag)
-                canvas.create_text(cell+x*cell, cell+y*cell-11, text=loc['name'], fill="#00FF00", font=("Arial", 7), tags=tag)
-            elif loc['type'] == 'Wilderness':
-                canvas.create_rectangle(cell+x*cell-7, cell+y*cell-7, cell+x*cell+7, cell+y*cell+7, fill="#8B4513", tags=tag)
-                canvas.create_text(cell+x*cell, cell+y*cell-10, text=loc['name'], fill="#8B4513", font=("Arial", 7), tags=tag)
-            elif loc['type'] == 'Ruins':
-                canvas.create_rectangle(cell+x*cell-7, cell+y*cell-7, cell+x*cell+7, cell+y*cell+7, fill="#A9A9A9", tags=tag)
-                canvas.create_text(cell+x*cell, cell+y*cell-10, text=loc['name'], fill="#A9A9A9", font=("Arial", 7), tags=tag)
-            location_tags[tag] = loc
-        # Show current location
-        zx, zy = self.game_world.get('zone_coords', (2, 7))
-        canvas.create_rectangle(cell+zx*cell-14, cell+zy*cell-14, cell+zx*cell+14, cell+zy*cell+14, outline="#00BFFF", width=2)
-        # Show world seed and legend
-        tk.Label(map_win, text=f"World Seed: {self.game_world.get('world_seed')}").pack()
-        legend = tk.Label(map_win, text="Legend: Continent=Gold Square, Country=Blue Circle, Kingdom=Pink Circle, City=Gold, Town=Green, Wilderness=Brown, Ruins=Gray", fg="#fff", bg="#222")
-        legend.pack()
-        # Show lists of continents, countries, kingdoms, towns, zones
-        geo_frame = tk.Frame(map_win, bg="#222")
-        geo_frame.pack(pady=4)
-        for label, key in [("Continents", 'continents'), ("Countries", 'countries'), ("Kingdoms", 'kingdoms'), ("Towns", 'towns'), ("Zones", 'zones')]:
-            tk.Label(geo_frame, text=f"{label}: {', '.join(self.game_world.get(key, []))}", fg="#fff", bg="#222", font=("Arial", 8)).pack(anchor='w')
-        # Interactivity: show info on click
-        def on_location_click(event):
-            x, y = (event.x - cell) // cell, (event.y - cell) // cell
-            for tag, loc in location_tags.items():
-                bbox = canvas.bbox(tag)
-                if bbox and bbox[0] <= event.x <= bbox[2] and bbox[1] <= event.y <= bbox[3]:
-                    info = f"{loc['type']}: {loc['name']}\nCoords: ({loc['x']},{loc['y']})"
-                    messagebox.showinfo("Location Info", info)
-                    return
-        canvas.bind("<Button-1>", on_location_click)
-        # Advanced: allow travel to towns/cities/kingdoms
-        def travel_to_location(loc):
-            if loc['type'] in ['Town', 'City', 'Kingdom']:
-                self.game_world['zone'] = loc['name']
-                self.game_world['zone_coords'] = (loc['x'], loc['y'])
-                messagebox.showinfo("Travel", f"You have traveled to {loc['name']}!")
-                map_win.destroy()
-        def on_right_click(event):
-            x, y = (event.x - cell) // cell, (event.y - cell) // cell
-            for tag, loc in location_tags.items():
-                bbox = canvas.bbox(tag)
-                if bbox and bbox[0] <= event.x <= bbox[2] and bbox[1] <= event.y <= bbox[3]:
-                    travel_to_location(loc)
-                    return
-        canvas.bind("<Button-3>", on_right_click)
-
-    def show_credits(self):
-        credits = (
-            "Game Credits\n"
-            "-----------------------------\n"
-            "Lead Developer: Shadow\n"
-            "Gameplay Design: Shadow\n"
-            "UI/UX: Shadow\n"
-            "Systems & Lore: Shadow\n"
-            "Testing: Shadow\n"
-            "Special Thanks: OpenAI, Diablo & WoW Communities\n"
-            "Engine: Arcane Engine v1.0\n"
-            "\nAll content is fan-made and non-commercial."
-        )
-        messagebox.showinfo("Game Credits", credits)
-
-    def show_patch_notes(self):
-        try:
-            with open('PATCH_NOTES.md', 'r', encoding='utf-8') as f:
-                notes = f.read()
-            messagebox.showinfo("Patch Notes", notes)
-        except Exception as e:
-            messagebox.showerror("Patch Notes", f"Could not load patch notes: {e}")
-
-    def run(self):
-        self.root.mainloop()
-
-    def launch_combat_menu(self):
-        # Diablo 4-style combat menu GUI for attacks, spells, health/mana, buffs/debuffs
-        combat = tk.Toplevel(self.root)
-        combat.title("Combat Menu")
-        combat.geometry("420x340")
-        # Health and Mana Pools
-        char = self.character or {'name': 'Hero', 'class': 'Barbarian', 'level': 1, 'stats': {}}
-        hp = char.get('stats', {}).get('hp', 100)
-        mana = char.get('stats', {}).get('mana', 50)
-        max_hp = char.get('stats', {}).get('max_hp', 100)
-        max_mana = char.get('stats', {}).get('max_mana', 50)
-        tk.Label(combat, text=f"{char['name']} the {char['class']} (Lv{char.get('level', 1)})", font=("Arial", 13, "bold")).pack(pady=5)
-        hp_var = tk.IntVar(value=hp)
-        mana_var = tk.IntVar(value=mana)
-        tk.Label(combat, text="Health:").pack()
-        hp_bar = tk.Scale(combat, from_=0, to=max_hp, orient='horizontal', variable=hp_var, length=200, fg='red', troughcolor='#800')
-        hp_bar.pack()
-        tk.Label(combat, text="Mana:").pack()
-        mana_bar = tk.Scale(combat, from_=0, to=max_mana, orient='horizontal', variable=mana_var, length=200, fg='blue', troughcolor='#00f')
-        mana_bar.pack()
-        # Buffs and Debuffs
-        buffs = char.get('stats', {}).get('buffs', [])
-        debuffs = char.get('stats', {}).get('debuffs', [])
-        tk.Label(combat, text="Buffs:").pack()
-        tk.Label(combat, text=", ".join(buffs) if buffs else "None", fg="#0a0").pack()
-        tk.Label(combat, text="Debuffs:").pack()
-        tk.Label(combat, text=", ".join(debuffs) if debuffs else "None", fg="#a00").pack()
-        # Attack and Spell Buttons
-        tk.Label(combat, text="Combat Actions:", font=("Arial", 11, "bold")).pack(pady=5)
-        actions_frame = tk.Frame(combat)
-        actions_frame.pack()
-        # Example: show up to 4 skills/spells from character
-        skills = char.get('skills', [])
-        if not skills:
-            # Fallback: use default skills for class if available
-            if 'class' in char and char['class'] in DIABLO4_SKILLS:
-                skills = DIABLO4_SKILLS[char['class']]
-            else:
-                skills = []
-        for i, skill in enumerate(skills[:4]):
-            skill_name = skill['name'] if isinstance(skill, dict) and 'name' in skill else str(skill)
-            tk.Button(actions_frame, text=skill_name, width=18, command=lambda s=skill: messagebox.showinfo("Skill", f"You use {s['name']}!" if isinstance(s, dict) and 'name' in s else f"You use {s}"), bg="#222", fg="#fff").grid(row=0, column=i, padx=3, pady=2)
-        # Basic Attack
-        tk.Button(actions_frame, text="Basic Attack", width=18, command=lambda: messagebox.showinfo("Attack", "You attack the enemy!"), bg="#444", fg="#fff").grid(row=1, column=0, padx=3, pady=2)
-        # Close button
-        tk.Button(combat, text="Close", command=combat.destroy).pack(pady=10)
-
-    def launch_crafting_menu(self):
-        crafting = tk.Toplevel(self.root)
-        crafting.title("Crafting Menu")
-        crafting.geometry("400x350")
-        if not hasattr(self, 'crafting_system') or self.crafting_system is None:
-            self.crafting_system = CraftingSystem()
-        cs = self.crafting_system
-        tk.Label(crafting, text="Available Materials:", font=("Arial", 11, "bold")).pack(pady=5)
-        mats_str = '\n'.join([f"{k}: {v}" for k, v in cs.get_materials().items()])
-        mats_label = tk.Label(crafting, text=mats_str)
-        mats_label.pack()
-        tk.Label(crafting, text="Craftable Items:", font=("Arial", 11, "bold")).pack(pady=5)
-        recipes = cs.get_recipes()
-        recipe_var = tk.StringVar(crafting)
-        recipe_var.set(recipes[0] if recipes else "")
-        tk.OptionMenu(crafting, recipe_var, *recipes).pack(pady=5)
-        def do_craft():
-            recipe = recipe_var.get()
-            if not recipe:
-                messagebox.showerror("Crafting", "No recipe selected.")
-                return
-            if not cs.can_craft(recipe):
-                messagebox.showerror("Crafting", "Not enough materials to craft this item.")
-                return
-            item = cs.craft(recipe)
-            if item:
-                messagebox.showinfo("Crafting", f"Crafted: {item['name']}\nPrefix: {item['prefix']}\nSuffix: {item['suffix']}")
-                mats_label.config(text='\n'.join([f"{k}: {v}" for k, v in cs.get_materials().items()]))
-            else:
-                messagebox.showerror("Crafting", "Crafting failed.")
-        tk.Button(crafting, text="Craft Item", command=do_craft).pack(pady=8)
-        tk.Button(crafting, text="Close", command=crafting.destroy).pack(pady=8)
-
-    def show_season_window(self):
-        win = tk.Toplevel(self.root)
-        win.title("Season Mode")
-        tk.Label(win, text="Season Mode", font=("Arial", 14, "bold")).pack(pady=8)
-        tk.Label(win, text=f"Current Season: {self.season_manager.get_current_season()}").pack(pady=4)
-        for i in range(1, 5):
-            tk.Button(win, text=f"Set Season {i}", command=lambda n=i: self._set_season_and_refresh(win, n)).pack(pady=2)
-        tk.Button(win, text="Close", command=win.destroy).pack(pady=8)
-
-    def _set_season_and_refresh(self, win, number):
-        self.season_manager.set_season(number)
-        messagebox.showinfo("Season Mode", f"Season set to {number}!")
-        win.destroy()
-        self.show_season_window()
-
-    def show_nightmare_window(self):
-        win = tk.Toplevel(self.root)
-        win.title("Nightmare Dungeons")
-        tk.Label(win, text="Nightmare Dungeons", font=("Arial", 14, "bold")).pack(pady=8)
-        dungeons = self.nightmare_manager.list_dungeons()
-        for idx, dungeon in enumerate(dungeons):
-            tk.Button(win, text=f"{dungeon['name']} (Tier {dungeon['tier']})", command=lambda i=idx: self._run_nightmare_dungeon(win, i)).pack(pady=2)
-        tk.Button(win, text="Close", command=win.destroy).pack(pady=8)
-
-    def _run_nightmare_dungeon(self, win, idx):
-        dungeons = self.nightmare_manager.get_nightmare_dungeons()
-        if 0 <= idx < len(dungeons):
-            dungeon = dungeons[idx]
-            result = self.nightmare_manager.run_dungeon(dungeon)
-            messagebox.showinfo("Nightmare Dungeon", result)
-        else:
-            messagebox.showerror("Nightmare Dungeon", "Invalid dungeon selection.")
-        win.destroy()
-
-    def show_pit_window(self):
-        win = tk.Toplevel(self.root)
-        win.title("Pit of Artificers")
-        tk.Label(win, text="Pit of Artificers", font=("Arial", 14, "bold")).pack(pady=8)
-        tk.Label(win, text="(Feature coming soon!)").pack(pady=8)
-        tk.Button(win, text="Close", command=win.destroy).pack(pady=8)
-
-    def launch_character_select(self):
-        char_list = self.load_character_list()
-        if not char_list:
-            messagebox.showinfo("Character Select", "No saved characters found. Create a new character first.")
-            return
-        CharacterSelectGUI(self.root, char_list, self._set_active_character)
-
-    def _set_active_character(self, character):
-        self.character = character
-        # Optionally save the last selected character index
-        messagebox.showinfo("Character Selected", f"You selected: {character['name']}")
-
-    def launch_raids(self):
-        win = tk.Toplevel(self.root)
-        win.title("Raids")
-        raids = self.raid_system.list_raids()
-        tk.Label(win, text="Available Raids:", font=("Arial", 12, "bold")).pack(pady=5)
-        for raid in raids:
-            tk.Label(win, text=f"{raid['name']} (Lv{raid['level']}) - Boss: {raid['boss']} | Party: {raid['min_party']}-{raid['max_party']}").pack(anchor='w')
-        tk.Button(win, text="Close", command=win.destroy).pack(pady=5)
-
-    def launch_trials(self):
-        win = tk.Toplevel(self.root)
-        win.title("Trials")
-        trials = self.trial_system.list_trials()
-        tk.Label(win, text="Available Trials:", font=("Arial", 12, "bold")).pack(pady=5)
-        for trial in trials:
-            tk.Label(win, text=f"{trial['name']} (Lv{trial['level']}) - {trial['type']}").pack(anchor='w')
-        tk.Button(win, text="Close", command=win.destroy).pack(pady=5)
-
-    def launch_dungeons(self):
-        win = tk.Toplevel(self.root)
-        win.title("Dungeons")
-        dungeons = self.dungeon_system.list_dungeons()
-        tk.Label(win, text="Available Dungeons:", font=("Arial", 12, "bold")).pack(pady=5)
-        for dungeon in dungeons:
-            tk.Label(win, text=f"{dungeon['name']} (Lv{dungeon['level']}) - Boss: {dungeon['boss']}").pack(anchor='w')
-        tk.Button(win, text="Close", command=win.destroy).pack(pady=5)
-
-    def launch_party_finder(self):
-        win = tk.Toplevel(self.root)
-        win.title("Party Finder (LFG)")
-        tk.Label(win, text="Join Party Finder for a Dungeon:", font=("Arial", 12, "bold")).pack(pady=5)
-        dungeons = self.dungeon_system.list_dungeons()
-        dungeon_var = tk.StringVar(win)
-        dungeon_var.set(dungeons[0]['name'] if dungeons else "")
-        tk.OptionMenu(win, dungeon_var, *[d['name'] for d in dungeons]).pack(pady=5)
-        name_entry = tk.Entry(win)
-        name_entry.pack(pady=5)
-        def join_lfg():
-            player_name = name_entry.get().strip() or "You"
-            dungeon_name = dungeon_var.get()
-            self.party_finder.join_lfg(player_name, dungeon_name)
-            messagebox.showinfo("LFG", f"{player_name} joined LFG for {dungeon_name}!")
-        tk.Button(win, text="Join LFG", command=join_lfg).pack(pady=5)
-        def form_parties():
-            dungeon_name = dungeon_var.get()
-            formed = self.party_finder.find_party(dungeon_name)
-            if formed:
-                msg = "\n".join([f"Party formed: {', '.join(p['members'])}" for p in formed])
-                messagebox.showinfo("Party Formed", msg)
-            else:
-                messagebox.showinfo("Party Formed", "Not enough players to form a party yet.")
-        tk.Button(win, text="Form Parties", command=form_parties).pack(pady=5)
-        tk.Button(win, text="Close", command=win.destroy).pack(pady=5)
-
-    def launch_dungeon_finder(self):
-        win = tk.Toplevel(self.root)
-        win.title("Dungeon Finder (LFD)")
-        tk.Label(win, text="Queue for a Dungeon:", font=("Arial", 12, "bold")).pack(pady=5)
-        dungeons = self.dungeon_system.list_dungeons()
-        dungeon_var = tk.StringVar(win)
-        dungeon_var.set(dungeons[0]['name'] if dungeons else "")
-        tk.OptionMenu(win, dungeon_var, *[d['name'] for d in dungeons]).pack(pady=5)
-        name_entry = tk.Entry(win)
-        name_entry.pack(pady=5)
-        def join_lfd():
-            player_name = name_entry.get().strip() or "You"
-            dungeon_name = dungeon_var.get()
-            self.dungeon_finder.join_lfd(player_name, dungeon_name)
-            messagebox.showinfo("LFD", f"{player_name} joined Dungeon Finder for {dungeon_name}!")
-        tk.Button(win, text="Join Dungeon Finder", command=join_lfd).pack(pady=5)
-        def match_parties():
-            dungeon_name = dungeon_var.get()
-            formed = self.dungeon_finder.match_parties(dungeon_name)
-            if formed:
-                msg = "\n".join([f"Party formed: {', '.join(p['members'])} (Instance {p['instance_id']})" for p in formed])
-                messagebox.showinfo("Dungeon Instance Created", msg)
-            else:
-                messagebox.showinfo("Dungeon Instance", "Not enough players to form a party yet.")
-        tk.Button(win, text="Form Parties & Create Instance", command=match_parties).pack(pady=5)
-        tk.Button(win, text="Close", command=win.destroy).pack(pady=5)
-
-    def launch_teleport(self):
-        if not self.teleport_system or not callable(getattr(self.teleport_system, 'teleport', None)):
-            messagebox.showerror("Teleport", "World not initialized yet.")
-            return
-        win = tk.Toplevel(self.root)
-        win.title("Teleport")
-        tk.Label(win, text="Teleport to:", font=("Arial", 12, "bold")).pack(pady=5)
-        locs = self.teleport_system.get_teleport_locations()
-        loc_var = tk.StringVar(win)
-        loc_var.set(locs[0]['name'] if locs else "")
-        tk.OptionMenu(win, loc_var, *[l['name'] for l in locs]).pack(pady=5)
-        name_entry = tk.Entry(win)
-        name_entry.pack(pady=5)
-        def do_teleport():
-            player = name_entry.get().strip() or "You"
-            loc = loc_var.get()
-            if self.teleport_system is not None and callable(getattr(self.teleport_system, 'teleport', None)):
-                result = self.teleport_system.teleport(player, loc)
-                messagebox.showinfo("Teleport", result)
-            else:
-                messagebox.showerror("Teleport", "Teleport system not available.")
-        tk.Button(win, text="Teleport", command=do_teleport).pack(pady=5)
-        tk.Button(win, text="Close", command=win.destroy).pack(pady=5)
-
+# === CHARACTER CREATION, SELECTION, AND GAMEPLAY ===
 # Character selection GUI
 class CharacterSelectGUI:
     def __init__(self, root, character_list, on_select):
@@ -1346,6 +1216,7 @@ class SkillNode:
         self.name = name
         self.description = description
         self.required_points = required_points
+        self.unlocked = unlocked
 
 class SkillTree:
     def __init__(self):
@@ -1448,6 +1319,7 @@ DIABLO4_SKILLS = {
         {'name': 'Earth Spike', 'desc': 'Erupt the ground beneath enemies.'},
         {'name': 'Storm Strike', 'desc': 'Strike with lightning.'},
         {'name': 'Shred', 'desc': 'Transform into a werewolf and slash.'},
+
         {'name': 'Landslide', 'desc': 'Crush enemies with earth.'},
         {'name': 'Hurricane', 'desc': 'Summon a storm around you.'},
         {'name': 'Grizzly Rage', 'desc': 'Transform into a werebear.'},
@@ -1635,32 +1507,187 @@ LOOT_TYPES = [
     'Handheld', 'Sword', 'Bladed', 'Ranged', 'Exotic'
 ]
 
-# === GEAR PREFIXES, SUFFIXES, AND LOOT TABLES (Diablo 4 & Last Epoch inspired) ===
-
-GEAR_PREFIXES = [
-    {'name': 'Fiery', 'effect': '+Fire Damage'},
-    {'name': 'Icy', 'effect': '+Cold Damage'},
-    {'name': 'Shocking', 'effect': '+Lightning Damage'},
-    {'name': 'Vampiric', 'effect': 'Life Leech'},
-    {'name': 'Stalwart', 'effect': '+Armor'},
-    {'name': 'Swift', 'effect': '+Attack Speed'},
-    {'name': 'Deadly', 'effect': '+Critical Strike Chance'},
-    {'name': 'Resilient', 'effect': '+All Resistances'},
-    {'name': 'Frenzied', 'effect': '+Frenzy on Hit'},
-    {'name': 'Ancient', 'effect': '+Max Life'},
+# === ARCHETYPES (Character Classes) ===
+ARCHETYPES = [
+    {
+        'name': 'Barbarian',
+        'desc': 'A brutal melee warrior with immense strength.',
+        'starting_stats': {'Strength': 10, 'Dexterity': 5, 'Intelligence': 2, 'Vitality': 8},
+        'special': 'Berserker Rage',
+    },
+    {
+        'name': 'Sorcerer',
+        'desc': 'A master of elemental magic.',
+        'starting_stats': {'Strength': 2, 'Dexterity': 5, 'Intelligence': 12, 'Vitality': 6},
+        'special': 'Elemental Mastery',
+    },
+    {
+        'name': 'Druid',
+        'desc': 'A shapeshifter who commands nature.',
+        'starting_stats': {'Strength': 6, 'Dexterity': 6, 'Intelligence': 7, 'Vitality': 8},
+        'special': 'Shapeshift',
+    },
+    {
+        'name': 'Rogue',
+        'desc': 'A swift and deadly assassin.',
+        'starting_stats': {'Strength': 4, 'Dexterity': 12, 'Intelligence': 4, 'Vitality': 6},
+        'special': 'Shadowstep',
+    },
+    {
+        'name': 'Necromancer',
+        'desc': 'A summoner of the dead.',
+        'starting_stats': {'Strength': 3, 'Dexterity': 4, 'Intelligence': 11, 'Vitality': 7},
+        'special': 'Raise Skeletons',
+    },
+    # ...add more archetypes as needed...
 ]
 
-GEAR_SUFFIXES = [
-    {'name': 'of the Bear', 'effect': '+Strength'},
-    {'name': 'of the Eagle', 'effect': '+Dexterity'},
-    {'name': 'of the Sage', 'effect': '+Intelligence'},
-    {'name': 'of the Fox', 'effect': '+Evasion'},
-    {'name': 'of the Leech', 'effect': 'Life Leech'},
-    {'name': 'of the Fortress', 'effect': '+Block Chance'},
-    {'name': 'of the Avalanche', 'effect': '+Cold Resistance'},
-    {'name': 'of the Inferno', 'effect': '+Fire Resistance'},
-    {'name': 'of the Storm', 'effect': '+Lightning Resistance'},
-    {'name': 'of the Titan', 'effect': '+Max Health'},
+# === BOSSES ===
+BOSSES = [
+    {'name': 'The Butcher', 'level': 10, 'hp': 1200, 'attack': 90, 'special': 'Charge, Cleaver Slam'},
+    {'name': 'Lilith', 'level': 30, 'hp': 3500, 'attack': 180, 'special': 'Blood Nova, Seduction'},
+    {'name': 'Duriel', 'level': 25, 'hp': 2800, 'attack': 150, 'special': 'Poison Swarm, Burrow'},
+    {'name': 'The Artificer', 'level': 20, 'hp': 2000, 'attack': 120, 'special': 'Summon Constructs, Arcane Blast'},
+    # ...add more bosses as needed...
+]
+
+# === WEAPONS ===
+WEAPONS = [
+    {'name': 'Iron Sword', 'type': 'Sword', 'damage': 12, 'class': ['Barbarian', 'Sentinel'], 'rarity': 'Common'},
+    {'name': 'Ancient Staff', 'type': 'Staff', 'damage': 9, 'class': ['Sorcerer', 'Mage', 'Necromancer'], 'rarity': 'Magic'},
+    {'name': 'Wolf Bow', 'type': 'Bow', 'damage': 11, 'class': ['Rogue', 'Marksman'], 'rarity': 'Rare'},
+    {'name': 'Bear Claws', 'type': 'Claws', 'damage': 10, 'class': ['Druid'], 'rarity': 'Magic'},
+    {'name': 'Shadow Dagger', 'type': 'Dagger', 'damage': 8, 'class': ['Rogue', 'Acolyte'], 'rarity': 'Legendary'},
+    {'name': 'Blood Scythe', 'type': 'Scythe', 'damage': 15, 'class': ['Necromancer'], 'rarity': 'Unique'},
+    # ...add more weapons as needed...
+]
+
+# === ARMORS ===
+ARMORS = [
+    {'name': 'Leather Armor', 'type': 'Chest', 'defense': 8, 'class': ['Rogue', 'Druid'], 'rarity': 'Common'},
+    {'name': 'Plate Mail', 'type': 'Chest', 'defense': 15, 'class': ['Barbarian', 'Sentinel'], 'rarity': 'Rare'},
+    {'name': 'Mystic Robe', 'type': 'Chest', 'defense': 6, 'class': ['Sorcerer', 'Mage', 'Necromancer'], 'rarity': 'Magic'},
+    {'name': 'Wolf Pelt', 'type': 'Helmet', 'defense': 5, 'class': ['Druid'], 'rarity': 'Magic'},
+    {'name': 'Shadow Hood', 'type': 'Helmet', 'defense': 4, 'class': ['Rogue', 'Acolyte'], 'rarity': 'Legendary'},
+    {'name': 'Bone Shield', 'type': 'Shield', 'defense': 10, 'class': ['Necromancer', 'Sentinel'], 'rarity': 'Unique'},
+    # ...add more armors as needed...
+]
+
+# === CODEX: WEAPONS, ARMOR, AND LEGENDARY ITEMS ===
+CODEX_ITEMS = [
+    {
+        'name': "The Grandfather",
+        'type': "Sword",
+        'rarity': "Unique",
+        'stats': ['+Damage', '+Max Life', '+All Stats'],
+        'description': "A legendary blade said to outlast its wielder."
+    },
+    {
+        'name': "Harlequin Crest",
+        'type': "Helmet",
+        'rarity': "Unique",
+        'stats': ['+All Stats', '+Cooldown Reduction', '+Damage Reduction'],
+        'description': "A mysterious helm that grants wisdom and resilience."
+    },
+    {
+        'name': "Doombringer",
+        'type': "Sword",
+        'rarity': "Unique",
+        'stats': ['+Shadow Damage', '+Lucky Hit', '+Max Life'],
+        'description': "A cursed blade that brings doom to its foes."
+    },
+    {
+        'name': "Andariel's Visage",
+        'type': "Helmet",
+        'rarity': "Unique",
+        'stats': ['+Poison Damage', '+Attack Speed', '+Life Steal'],
+        'description': "The demonic mask of the Maiden of Anguish."
+    },
+    {
+        'name': "Tyrael's Might",
+        'type': "Armor",
+        'rarity': "Unique",
+        'stats': ['+All Resistances', '+Movement Speed', '+Damage to Demons'],
+        'description': "Heavenly armor once worn by the Archangel Tyrael."
+    },
+    {
+        'name': "Stormshield",
+        'type': "Shield",
+        'rarity': "Legendary",
+        'stats': ['+Block Chance', '+Damage Reduction', '+Lightning Resist'],
+        'description': "A shield that crackles with the power of storms."
+    },
+    {
+        'name': "Windforce",
+        'type': "Bow",
+        'rarity': "Legendary",
+        'stats': ['+Attack Speed', '+Knockback', '+Critical Hit Chance'],
+        'description': "A bow that fires with the force of a hurricane."
+    },
+    {
+        'name': "Death's Web",
+        'type': "Wand",
+        'rarity': "Legendary",
+        'stats': ['+Poison Damage', '+Life Leech', '+Curse Power'],
+        'description': "A wand woven with the power of death and decay."
+    },
+    {
+        'name': "Stone of Jordan",
+        'type': "Ring",
+        'rarity': "Legendary",
+        'stats': ['+Skill Levels', '+Mana', '+Elemental Damage'],
+        'description': "A ring coveted by mages for its arcane power."
+    },
+    {
+        'name': "Frostburn",
+        'type': "Gloves",
+        'rarity': "Legendary",
+        'stats': ['+Cold Damage', '+Mana', '+Freeze Chance'],
+        'description': "Gloves that chill the air and freeze the soul."
+    },
+    {
+        'name': "Thunderfury, Blessed Blade of the Windseeker",
+        'type': "Sword",
+        'rarity': "Legendary",
+        'stats': ['+Lightning Damage', '+Chain Lightning Proc', '+Attack Speed'],
+        'description': "A blade that calls down the fury of the storm."
+    },
+    {
+        'name': "Bloodraven's Charge",
+        'type': "Bow",
+        'rarity': "Legendary",
+        'stats': ['+Summon Power', '+Attack Speed', '+Poison Damage'],
+        'description': "A bow once wielded by the fallen ranger Bloodraven."
+    },
+    {
+        'name': "Arkaine's Valor",
+        'type': "Armor",
+        'rarity': "Legendary",
+        'stats': ['+Life', '+Damage Reduction', '+Skill Cooldown'],
+        'description': "Armor that inspires valor in its wearer."
+    },
+    {
+        'name': "Raven Frost",
+        'type': "Ring",
+        'rarity': "Legendary",
+        'stats': ['+Cold Resist', '+Cannot Be Frozen', '+Dexterity'],
+        'description': "A ring that protects against the harshest cold."
+    },
+    {
+        'name': "Dracul's Grasp",
+        'type': "Gloves",
+        'rarity': "Legendary",
+        'stats': ['+Life Leech', '+Open Wounds', '+Strength'],
+        'description': "Gloves that thirst for the blood of enemies."
+    },
+    {
+        'name': "Crown of Ages",
+        'type': "Helmet",
+        'rarity': "Legendary",
+        'stats': ['+All Resistances', '+Damage Reduction', '+Sockets'],
+        'description': "A crown worn by ancient kings and heroes."
+    },
+    # ...add more codex items as needed...
 ]
 
 # Dummy/fallback definitions for missing constants and classes to prevent NameError
@@ -1673,6 +1700,7 @@ class SeasonManager:
         self.current = 0
     def get_current_season(self):
         return self.seasons[self.current]
+   
     def set_season(self, n):
         self.current = max(0, min(n-1, len(self.seasons)-1))
     def list_seasons(self):
